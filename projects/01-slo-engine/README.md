@@ -5,8 +5,18 @@ Build a lightweight SLO policy engine that:
 - evaluates budget burn behavior,
 - fails CI when reliability risk crosses thresholds.
 
-## Planned Deliverables
-- SLO spec schema
-- evaluator CLI
-- sample services + policies
-- CI check workflow
+## Delivered Baseline (v1)
+- JSON SLO policy schema with service-level windows
+- `scripts/slo_check.py` evaluator CLI
+- sample service policy: `projects/01-slo-engine/sample-slo.json`
+- CI integration gate for critical burn-rate breaches
+
+## Usage
+```bash
+python3 scripts/slo_check.py --input projects/01-slo-engine/sample-slo.json
+```
+
+Exit codes:
+- `0` = all services pass / warning only
+- `1` = at least one service is in critical burn
+- `2` = invalid policy / evaluator failure

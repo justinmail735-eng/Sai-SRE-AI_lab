@@ -1,0 +1,45 @@
+{
+  "policy": {
+    "min_requests": 200,
+    "warning_burn_rate": 1.0,
+    "critical_burn_rate": 2.0
+  },
+  "services": [
+    {
+      "name": "payments-api",
+      "target_availability": 0.999,
+      "windows": [
+        {
+          "label": "5m",
+          "minutes": 5,
+          "total_requests": 15000,
+          "error_requests": 20
+        },
+        {
+          "label": "60m",
+          "minutes": 60,
+          "total_requests": 180000,
+          "error_requests": 95
+        }
+      ]
+    },
+    {
+      "name": "checkout-worker",
+      "target_availability": 0.995,
+      "windows": [
+        {
+          "label": "5m",
+          "minutes": 5,
+          "total_requests": 900,
+          "error_requests": 2
+        },
+        {
+          "label": "60m",
+          "minutes": 60,
+          "total_requests": 12000,
+          "error_requests": 40
+        }
+      ]
+    }
+  ]
+}

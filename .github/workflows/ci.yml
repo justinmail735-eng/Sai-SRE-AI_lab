@@ -11,3 +11,11 @@ jobs:
         run: |
           test -f README.md
           test -f docs/roadmap/SPRINT-7D.md
+
+  slo-policy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run SLO policy evaluator
+        run: |
+          python3 scripts/slo_check.py --input projects/01-slo-engine/sample-slo.json
