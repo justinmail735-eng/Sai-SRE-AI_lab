@@ -19,3 +19,7 @@ jobs:
       - name: Run SLO policy evaluator
         run: |
           python3 scripts/slo_check.py --input projects/01-slo-engine/sample-slo.json
+
+      - name: Run SLO evaluator tests
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py' -v

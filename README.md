@@ -26,5 +26,16 @@ Build production-style reliability systems, runbooks, and automation that demons
 - `logs/daily/` — daily progress and outcomes
 - `scripts/` — utility tooling and automation
 
+## SLO Policy Evaluator
+Run the checker locally against the sample policy:
+
+```bash
+python3 scripts/slo_check.py --input projects/01-slo-engine/sample-slo.json
+```
+
+Helpful CI/automation flags:
+- `--output json` for machine-readable output in pipelines
+- `--fail-on-warning` to fail builds on warning-level budget burn
+
 ## Current Status
 See `docs/roadmap/SPRINT-7D.md` and `logs/daily/2026-02-23.md`.

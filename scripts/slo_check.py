@@ -7,7 +7,7 @@ import argparse
 import json
 import math
 import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -51,6 +51,7 @@ def evaluate_service(service: dict[str, Any], min_requests: int, warn_burn: floa
     windows_data = service.get("windows", [])
     windows: list[WindowResult] = []
     highest = "pass"
+    seen_labels: set[str] = set()
 
     for item in windows_data:
         label = item["label"]
@@ -58,6 +59,12 @@ def evaluate_service(service: dict[str, Any], min_requests: int, warn_burn: floa
         total = int(item["total_requests"])
         errors = int(item["error_requests"])
 
+        if label in seen_labels:
+            raise ValueError(f"service '{name}' has duplicate window label '{label}'")
+        seen_labels.add(label)
+
+        if minutes <= 0:
+            raise ValueError(f"service '{name}' window '{label}' must have minutes > 0")
         if total < 0 or errors < 0:
             raise ValueError(f"service '{name}' window '{label}' has negative request counts")
         if errors > total:
@@ -134,9 +141,20 @@ def render(results: Iterable[ServiceResult]) -> str:
     return "\n".join(lines).rstrip()
 
 
+def to_json(results: Iterable[ServiceResult]) -> str:
+    payload = [asdict(result) for result in results]
+    return json.dumps(payload, indent=2)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate SLO error-budget burn for one or more services.")
     parser.add_argument("--input", "-i", type=Path, default=Path("projects/01-slo-engine/sample-slo.json"), help="path to SLO policy JSON")
+    parser.add_argument("--output", choices=("text", "json"), default="text", help="render output as text table or machine-readable JSON")
+    parser.add_argument(
+        "--fail-on-warning",
+        action="store_true",
+        help="return non-zero on warning (default only fails on critical)",
+    )
     args = parser.parse_args()
 
     try:
@@ -146,9 +164,14 @@ def main() -> int:
         print(f"slo-check: failed to evaluate policy: {exc}", file=sys.stderr)
         return 2
 
-    print(render(results))
+    if args.output == "json":
+        print(to_json(results))
+    else:
+        print(render(results))
 
     if any(r.state == "critical" for r in results):
+        return 1
+    if args.fail_on_warning and any(r.state == "warning" for r in results):
         return 1
     return 0
 
