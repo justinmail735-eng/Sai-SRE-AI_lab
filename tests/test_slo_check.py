@@ -66,6 +66,17 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("duplicate window label", result.stderr)
 
+    def test_fail_on_insufficient_data_returns_nonzero(self):
+        payload = base_payload()
+        payload["services"][0]["windows"][0]["total_requests"] = 50
+        payload["services"][0]["windows"][0]["error_requests"] = 0
+
+        normal = run_slo(payload)
+        strict = run_slo(payload, "--fail-on-insufficient-data")
+
+        self.assertEqual(normal.returncode, 0)
+        self.assertEqual(strict.returncode, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
