@@ -37,6 +37,7 @@ Helpful CI/automation flags:
 - `--output json` for machine-readable output in pipelines
 - `--fail-on-warning` to fail builds on warning-level budget burn
 - `--fail-on-insufficient-data` to enforce minimum traffic confidence before passing CI
+- `--require-owner` to enforce service ownership metadata (non-empty `owner` per service)
 
 ## Current Status
 See `docs/roadmap/SPRINT-7D.md` and `logs/daily/2026-02-23.md`.

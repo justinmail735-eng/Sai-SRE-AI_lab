@@ -20,3 +20,6 @@ Exit codes:
 - `0` = all services pass / warning only
 - `1` = at least one service is in critical burn
 - `2` = invalid policy / evaluator failure
+
+Optional ownership guardrail:
+- add `owner` on each service and run with `--require-owner` to fail CI when ownership metadata is missing

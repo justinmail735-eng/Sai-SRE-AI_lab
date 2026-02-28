@@ -26,6 +26,7 @@ class WindowResult:
 @dataclass
 class ServiceResult:
     name: str
+    owner: str | None
     target: float
     budget: float
     state: str
@@ -40,9 +41,20 @@ def _safe_div(num: float, den: float) -> float:
     return num / den if den else 0.0
 
 
-def evaluate_service(service: dict[str, Any], min_requests: int, warn_burn: float, crit_burn: float) -> ServiceResult:
+def evaluate_service(
+    service: dict[str, Any],
+    min_requests: int,
+    warn_burn: float,
+    crit_burn: float,
+    require_owner: bool,
+) -> ServiceResult:
     name = service["name"]
     target = float(service["target_availability"])
+
+    owner_value = service.get("owner")
+    owner = owner_value.strip() if isinstance(owner_value, str) else None
+    if require_owner and not owner:
+        raise ValueError(f"service '{name}' is missing required non-empty owner field")
 
     if not (0 < target < 1):
         raise ValueError(f"service '{name}' has invalid target_availability={target}; expected value between 0 and 1")
@@ -96,10 +108,10 @@ def evaluate_service(service: dict[str, Any], min_requests: int, warn_burn: floa
             )
         )
 
-    return ServiceResult(name=name, target=target, budget=budget, state=highest, windows=windows)
+    return ServiceResult(name=name, owner=owner, target=target, budget=budget, state=highest, windows=windows)
 
 
-def evaluate(data: dict[str, Any]) -> list[ServiceResult]:
+def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceResult]:
     policy = data.get("policy", {})
     min_requests = int(policy.get("min_requests", 100))
     warn_burn = float(policy.get("warning_burn_rate", 1.0))
@@ -116,13 +128,23 @@ def evaluate(data: dict[str, Any]) -> list[ServiceResult]:
     if not services:
         raise ValueError("no services were defined")
 
-    return [evaluate_service(s, min_requests=min_requests, warn_burn=warn_burn, crit_burn=crit_burn) for s in services]
+    return [
+        evaluate_service(
+            s,
+            min_requests=min_requests,
+            warn_burn=warn_burn,
+            crit_burn=crit_burn,
+            require_owner=require_owner,
+        )
+        for s in services
+    ]
 
 
 def render(results: Iterable[ServiceResult]) -> str:
     lines: list[str] = []
     for service in results:
         lines.append(f"Service: {service.name}")
+        lines.append(f"  Owner : {service.owner or 'unknown'}")
         lines.append(f"  Target: {_pct(service.target)} (budget {_pct(service.budget)})")
         lines.append(f"  State : {service.state.upper()}")
         lines.append("  Windows:")
@@ -160,11 +182,16 @@ def main() -> int:
         action="store_true",
         help="return non-zero when any window is marked insufficient-data (useful for CI quality gates)",
     )
+    parser.add_argument(
+        "--require-owner",
+        action="store_true",
+        help="return non-zero if any service omits a non-empty owner field",
+    )
     args = parser.parse_args()
 
     try:
         data = json.loads(args.input.read_text())
-        results = evaluate(data)
+        results = evaluate(data, require_owner=args.require_owner)
     except Exception as exc:  # broad by design: CI should fail with clear error
         print(f"slo-check: failed to evaluate policy: {exc}", file=sys.stderr)
         return 2

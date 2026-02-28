@@ -28,6 +28,7 @@ def base_payload():
         "services": [
             {
                 "name": "api",
+                "owner": "platform@sai-lab.local",
                 "target_availability": 0.999,
                 "windows": [
                     {"label": "5m", "minutes": 5, "total_requests": 10000, "error_requests": 2},
@@ -44,6 +45,7 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         parsed = json.loads(result.stdout)
         self.assertEqual(parsed[0]["name"], "api")
+        self.assertEqual(parsed[0]["owner"], "platform@sai-lab.local")
         self.assertEqual(parsed[0]["windows"][0]["label"], "5m")
 
     def test_fail_on_warning_returns_nonzero(self):
@@ -76,6 +78,15 @@ class SloCheckTests(unittest.TestCase):
 
         self.assertEqual(normal.returncode, 0)
         self.assertEqual(strict.returncode, 1)
+
+    def test_require_owner_fails_when_missing(self):
+        payload = base_payload()
+        del payload["services"][0]["owner"]
+
+        result = run_slo(payload, "--require-owner")
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("missing required non-empty owner", result.stderr)
 
 
 if __name__ == "__main__":
