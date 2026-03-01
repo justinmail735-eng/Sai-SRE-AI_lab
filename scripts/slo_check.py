@@ -47,6 +47,7 @@ def evaluate_service(
     warn_burn: float,
     crit_burn: float,
     require_owner: bool,
+    required_windows: set[str],
 ) -> ServiceResult:
     name = service["name"]
     target = float(service["target_availability"])
@@ -61,6 +62,9 @@ def evaluate_service(
 
     budget = 1.0 - target
     windows_data = service.get("windows", [])
+    if not windows_data:
+        raise ValueError(f"service '{name}' must define at least one window")
+
     windows: list[WindowResult] = []
     highest = "pass"
     seen_labels: set[str] = set()
@@ -108,6 +112,11 @@ def evaluate_service(
             )
         )
 
+    missing_windows = sorted(required_windows - seen_labels)
+    if missing_windows:
+        missing = ", ".join(missing_windows)
+        raise ValueError(f"service '{name}' is missing required windows: {missing}")
+
     return ServiceResult(name=name, owner=owner, target=target, budget=budget, state=highest, windows=windows)
 
 
@@ -124,9 +133,20 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
     if warn_burn > crit_burn:
         raise ValueError("policy.warning_burn_rate cannot exceed policy.critical_burn_rate")
 
+    required_windows = {str(label) for label in policy.get("required_windows", [])}
+
     services = data.get("services", [])
     if not services:
         raise ValueError("no services were defined")
+
+    seen_services: set[str] = set()
+    for s in services:
+        name = str(s.get("name", "")).strip()
+        if not name:
+            raise ValueError("service is missing non-empty name")
+        if name in seen_services:
+            raise ValueError(f"duplicate service name '{name}'")
+        seen_services.add(name)
 
     return [
         evaluate_service(
@@ -135,6 +155,7 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
             warn_burn=warn_burn,
             crit_burn=crit_burn,
             require_owner=require_owner,
+            required_windows=required_windows,
         )
         for s in services
     ]

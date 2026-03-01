@@ -88,6 +88,24 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("missing required non-empty owner", result.stderr)
 
+    def test_required_windows_policy_rejects_missing_label(self):
+        payload = base_payload()
+        payload["policy"]["required_windows"] = ["5m", "6h"]
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("missing required windows: 6h", result.stderr)
+
+    def test_service_with_no_windows_fails_validation(self):
+        payload = base_payload()
+        payload["services"][0]["windows"] = []
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("must define at least one window", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

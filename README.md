@@ -38,6 +38,7 @@ Helpful CI/automation flags:
 - `--fail-on-warning` to fail builds on warning-level budget burn
 - `--fail-on-insufficient-data` to enforce minimum traffic confidence before passing CI
 - `--require-owner` to enforce service ownership metadata (non-empty `owner` per service)
+- `policy.required_windows` (JSON field) to enforce a standard set of burn windows across every service (for example `["5m", "60m"]`)
 
 ## Current Status
 See `docs/roadmap/SPRINT-7D.md` and `logs/daily/2026-02-23.md`.

@@ -2,7 +2,8 @@
   "policy": {
     "min_requests": 200,
     "warning_burn_rate": 1.0,
-    "critical_burn_rate": 2.0
+    "critical_burn_rate": 2.0,
+    "required_windows": ["5m", "60m"]
   },
   "services": [
     {
