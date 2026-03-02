@@ -88,6 +88,17 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("missing required non-empty owner", result.stderr)
 
+    def test_service_state_is_insufficient_data_when_any_window_lacks_volume(self):
+        payload = base_payload()
+        payload["services"][0]["windows"][0]["total_requests"] = 50
+        payload["services"][0]["windows"][0]["error_requests"] = 0
+
+        result = run_slo(payload, "--output", "json")
+
+        self.assertEqual(result.returncode, 0)
+        parsed = json.loads(result.stdout)
+        self.assertEqual(parsed[0]["state"], "insufficient-data")
+
     def test_required_windows_policy_rejects_missing_label(self):
         payload = base_payload()
         payload["policy"]["required_windows"] = ["5m", "6h"]

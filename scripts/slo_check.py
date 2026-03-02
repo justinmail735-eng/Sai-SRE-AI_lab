@@ -67,6 +67,7 @@ def evaluate_service(
 
     windows: list[WindowResult] = []
     highest = "pass"
+    has_insufficient_data = False
     seen_labels: set[str] = set()
 
     for item in windows_data:
@@ -91,6 +92,7 @@ def evaluate_service(
 
         if total < min_requests:
             state = "insufficient-data"
+            has_insufficient_data = True
         elif burn_rate >= crit_burn:
             state = "critical"
             highest = "critical"
@@ -116,6 +118,9 @@ def evaluate_service(
     if missing_windows:
         missing = ", ".join(missing_windows)
         raise ValueError(f"service '{name}' is missing required windows: {missing}")
+
+    if highest == "pass" and has_insufficient_data:
+        highest = "insufficient-data"
 
     return ServiceResult(name=name, owner=owner, target=target, budget=budget, state=highest, windows=windows)
 
