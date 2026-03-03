@@ -108,6 +108,23 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("missing required windows: 6h", result.stderr)
 
+    def test_owner_email_domain_policy_rejects_mismatch(self):
+        payload = base_payload()
+        payload["policy"]["owner_email_domain"] = "example.com"
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("does not match required domain 'example.com'", result.stderr)
+
+    def test_owner_email_domain_policy_accepts_matching_domain(self):
+        payload = base_payload()
+        payload["policy"]["owner_email_domain"] = "sai-lab.local"
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 0)
+
     def test_service_with_no_windows_fails_validation(self):
         payload = base_payload()
         payload["services"][0]["windows"] = []

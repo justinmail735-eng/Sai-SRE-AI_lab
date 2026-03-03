@@ -48,6 +48,7 @@ def evaluate_service(
     crit_burn: float,
     require_owner: bool,
     required_windows: set[str],
+    owner_email_domain: str | None,
 ) -> ServiceResult:
     name = service["name"]
     target = float(service["target_availability"])
@@ -56,6 +57,20 @@ def evaluate_service(
     owner = owner_value.strip() if isinstance(owner_value, str) else None
     if require_owner and not owner:
         raise ValueError(f"service '{name}' is missing required non-empty owner field")
+
+    if owner_email_domain:
+        if not owner:
+            raise ValueError(
+                f"service '{name}' must define owner when policy.owner_email_domain is set"
+            )
+        owner_parts = owner.rsplit("@", 1)
+        if len(owner_parts) != 2 or not owner_parts[1]:
+            raise ValueError(f"service '{name}' owner '{owner}' is not a valid email address")
+        owner_domain = owner_parts[1].lower()
+        if owner_domain != owner_email_domain:
+            raise ValueError(
+                f"service '{name}' owner domain '{owner_domain}' does not match required domain '{owner_email_domain}'"
+            )
 
     if not (0 < target < 1):
         raise ValueError(f"service '{name}' has invalid target_availability={target}; expected value between 0 and 1")
@@ -140,6 +155,13 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
 
     required_windows = {str(label) for label in policy.get("required_windows", [])}
 
+    owner_email_domain_raw = policy.get("owner_email_domain")
+    owner_email_domain: str | None = None
+    if owner_email_domain_raw is not None:
+        owner_email_domain = str(owner_email_domain_raw).strip().lower().lstrip("@")
+        if not owner_email_domain:
+            raise ValueError("policy.owner_email_domain must be a non-empty domain string when set")
+
     services = data.get("services", [])
     if not services:
         raise ValueError("no services were defined")
@@ -161,6 +183,7 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
             crit_burn=crit_burn,
             require_owner=require_owner,
             required_windows=required_windows,
+            owner_email_domain=owner_email_domain,
         )
         for s in services
     ]
