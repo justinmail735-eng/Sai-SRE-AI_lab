@@ -134,6 +134,36 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("must define at least one window", result.stderr)
 
+    def test_window_burn_rate_override_can_raise_window_to_critical(self):
+        payload = base_payload()
+        payload["services"][0]["windows"][0]["error_requests"] = 12
+
+        baseline = run_slo(payload, "--output", "json")
+
+        payload["policy"]["window_burn_rate_overrides"] = {
+            "5m": {"warning_burn_rate": 1.0, "critical_burn_rate": 1.1}
+        }
+        overridden = run_slo(payload, "--output", "json")
+
+        self.assertEqual(baseline.returncode, 0)
+        base_parsed = json.loads(baseline.stdout)
+        self.assertEqual(base_parsed[0]["windows"][0]["state"], "warning")
+
+        parsed = json.loads(overridden.stdout)
+        self.assertEqual(parsed[0]["windows"][0]["state"], "critical")
+        self.assertEqual(parsed[0]["state"], "critical")
+
+    def test_window_burn_rate_override_validation_rejects_invalid_thresholds(self):
+        payload = base_payload()
+        payload["policy"]["window_burn_rate_overrides"] = {
+            "5m": {"warning_burn_rate": 4.0, "critical_burn_rate": 3.0}
+        }
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("warning_burn_rate cannot exceed critical_burn_rate", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

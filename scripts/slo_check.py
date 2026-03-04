@@ -49,6 +49,7 @@ def evaluate_service(
     require_owner: bool,
     required_windows: set[str],
     owner_email_domain: str | None,
+    window_burn_overrides: dict[str, tuple[float, float]],
 ) -> ServiceResult:
     name = service["name"]
     target = float(service["target_availability"])
@@ -104,14 +105,15 @@ def evaluate_service(
 
         availability = _safe_div(total - errors, total)
         burn_rate = _safe_div((1.0 - availability), budget)
+        effective_warn_burn, effective_crit_burn = window_burn_overrides.get(label, (warn_burn, crit_burn))
 
         if total < min_requests:
             state = "insufficient-data"
             has_insufficient_data = True
-        elif burn_rate >= crit_burn:
+        elif burn_rate >= effective_crit_burn:
             state = "critical"
             highest = "critical"
-        elif burn_rate >= warn_burn and highest != "critical":
+        elif burn_rate >= effective_warn_burn and highest != "critical":
             state = "warning"
             highest = "warning"
         else:
@@ -162,6 +164,32 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
         if not owner_email_domain:
             raise ValueError("policy.owner_email_domain must be a non-empty domain string when set")
 
+    window_burn_overrides_raw = policy.get("window_burn_rate_overrides", {})
+    if not isinstance(window_burn_overrides_raw, dict):
+        raise ValueError("policy.window_burn_rate_overrides must be an object mapping labels to thresholds")
+
+    window_burn_overrides: dict[str, tuple[float, float]] = {}
+    for label, thresholds in window_burn_overrides_raw.items():
+        label_str = str(label)
+        if not isinstance(thresholds, dict):
+            raise ValueError(
+                f"policy.window_burn_rate_overrides['{label_str}'] must be an object with warning/critical burn rates"
+            )
+
+        override_warn = float(thresholds.get("warning_burn_rate", warn_burn))
+        override_crit = float(thresholds.get("critical_burn_rate", crit_burn))
+
+        if override_warn <= 0 or override_crit <= 0:
+            raise ValueError(
+                f"policy.window_burn_rate_overrides['{label_str}'] burn rates must be > 0"
+            )
+        if override_warn > override_crit:
+            raise ValueError(
+                f"policy.window_burn_rate_overrides['{label_str}'] warning_burn_rate cannot exceed critical_burn_rate"
+            )
+
+        window_burn_overrides[label_str] = (override_warn, override_crit)
+
     services = data.get("services", [])
     if not services:
         raise ValueError("no services were defined")
@@ -184,6 +212,7 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
             require_owner=require_owner,
             required_windows=required_windows,
             owner_email_domain=owner_email_domain,
+            window_burn_overrides=window_burn_overrides,
         )
         for s in services
     ]

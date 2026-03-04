@@ -40,6 +40,7 @@ Helpful CI/automation flags:
 - `--require-owner` to enforce service ownership metadata (non-empty `owner` per service)
 - `policy.required_windows` (JSON field) to enforce a standard set of burn windows across every service (for example `["5m", "60m"]`)
 - `policy.owner_email_domain` (JSON field) to enforce service owner email domains (for example `"sai-lab.local"`)
+- `policy.window_burn_rate_overrides` (JSON field) to tune warning/critical burn thresholds by window label (for example stricter `5m` thresholds than `1h`)
 
 ## Current Status
 See `docs/roadmap/SPRINT-7D.md` and `logs/daily/2026-02-23.md`.
