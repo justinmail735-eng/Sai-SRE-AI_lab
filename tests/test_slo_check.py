@@ -164,6 +164,28 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("warning_burn_rate cannot exceed critical_burn_rate", result.stderr)
 
+    def test_min_requests_override_can_mark_specific_window_insufficient_data(self):
+        payload = base_payload()
+        payload["policy"]["min_requests_overrides"] = {"1h": 120000}
+
+        result = run_slo(payload, "--output", "json")
+
+        self.assertEqual(result.returncode, 0)
+        parsed = json.loads(result.stdout)
+        by_label = {w["label"]: w for w in parsed[0]["windows"]}
+        self.assertEqual(by_label["5m"]["state"], "pass")
+        self.assertEqual(by_label["1h"]["state"], "insufficient-data")
+        self.assertEqual(parsed[0]["state"], "insufficient-data")
+
+    def test_min_requests_override_validation_rejects_negative_values(self):
+        payload = base_payload()
+        payload["policy"]["min_requests_overrides"] = {"5m": -1}
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("policy.min_requests_overrides['5m'] must be >= 0", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

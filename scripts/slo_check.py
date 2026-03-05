@@ -44,6 +44,7 @@ def _safe_div(num: float, den: float) -> float:
 def evaluate_service(
     service: dict[str, Any],
     min_requests: int,
+    min_requests_overrides: dict[str, int],
     warn_burn: float,
     crit_burn: float,
     require_owner: bool,
@@ -106,8 +107,9 @@ def evaluate_service(
         availability = _safe_div(total - errors, total)
         burn_rate = _safe_div((1.0 - availability), budget)
         effective_warn_burn, effective_crit_burn = window_burn_overrides.get(label, (warn_burn, crit_burn))
+        effective_min_requests = min_requests_overrides.get(label, min_requests)
 
-        if total < min_requests:
+        if total < effective_min_requests:
             state = "insufficient-data"
             has_insufficient_data = True
         elif burn_rate >= effective_crit_burn:
@@ -156,6 +158,17 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
         raise ValueError("policy.warning_burn_rate cannot exceed policy.critical_burn_rate")
 
     required_windows = {str(label) for label in policy.get("required_windows", [])}
+
+    min_requests_overrides_raw = policy.get("min_requests_overrides", {})
+    if not isinstance(min_requests_overrides_raw, dict):
+        raise ValueError("policy.min_requests_overrides must be an object mapping labels to request thresholds")
+
+    min_requests_overrides: dict[str, int] = {}
+    for label, threshold in min_requests_overrides_raw.items():
+        threshold_int = int(threshold)
+        if threshold_int < 0:
+            raise ValueError(f"policy.min_requests_overrides['{label}'] must be >= 0")
+        min_requests_overrides[str(label)] = threshold_int
 
     owner_email_domain_raw = policy.get("owner_email_domain")
     owner_email_domain: str | None = None
@@ -207,6 +220,7 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
         evaluate_service(
             s,
             min_requests=min_requests,
+            min_requests_overrides=min_requests_overrides,
             warn_burn=warn_burn,
             crit_burn=crit_burn,
             require_owner=require_owner,
