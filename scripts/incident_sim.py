@@ -299,6 +299,35 @@ def to_json(scenario: IncidentScenario) -> str:
     return json.dumps(asdict(scenario), indent=2)
 
 
+def to_markdown(scenario: IncidentScenario) -> str:
+    lines = [
+        f"# Incident Scenario {scenario.scenario_id}",
+        "",
+        "## Overview",
+        f"- **Fault Type:** `{scenario.fault_type}`",
+        f"- **Severity:** `{scenario.severity}`",
+        f"- **Affected Service:** `{scenario.affected_service}`",
+        f"- **Start Time (UTC):** `{scenario.start_time}`",
+        f"- **Duration:** `{scenario.duration_sec // 60}m {scenario.duration_sec % 60}s`",
+        "",
+        "## Timeline",
+        "",
+        "| Offset | Event | Detail |",
+        "|---|---|---|",
+    ]
+
+    for ev in sorted(scenario.timeline, key=lambda e: e.time_offset_sec):
+        ts = f"T+{ev.time_offset_sec // 60:02d}:{ev.time_offset_sec % 60:02d}"
+        detail = ev.detail.replace("|", "\\|")
+        lines.append(f"| `{ts}` | `{ev.event_type}` | {detail} |")
+
+    lines += ["", "## Runbook", ""]
+    for line in scenario.runbook.splitlines():
+        lines.append(f"- {line}")
+    lines.append("")
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -332,7 +361,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        choices=("text", "json"),
+        choices=("text", "json", "markdown"),
         default="text",
         help="output format (default: text)",
     )
@@ -363,6 +392,8 @@ def main() -> int:
 
     if args.output == "json":
         print(to_json(scenario))
+    elif args.output == "markdown":
+        print(to_markdown(scenario))
     else:
         print(render(scenario))
 

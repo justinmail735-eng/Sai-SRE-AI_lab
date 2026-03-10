@@ -27,6 +27,13 @@ class IncidentSimBasicTests(unittest.TestCase):
                     "start_time", "duration_sec", "runbook", "timeline"):
             self.assertIn(key, data)
 
+    def test_markdown_output_contains_sections_and_table(self):
+        result = run_sim("--output", "markdown", "--seed", "5")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("# Incident Scenario", result.stdout)
+        self.assertIn("## Timeline", result.stdout)
+        self.assertIn("| Offset | Event | Detail |", result.stdout)
+
     def test_seed_produces_deterministic_output(self):
         r1 = run_sim("--fault-type", "latency_spike", "--seed", "42", "--output", "json")
         r2 = run_sim("--fault-type", "latency_spike", "--seed", "42", "--output", "json")
@@ -125,6 +132,11 @@ class IncidentSimSeverityTests(unittest.TestCase):
         resolved = [e for e in data["timeline"] if e["event_type"] == "resolved"]
         self.assertEqual(len(resolved), 1)
         self.assertEqual(resolved[0]["time_offset_sec"], data["duration_sec"])
+
+    def test_markdown_output_escapes_table_pipe_characters(self):
+        result = run_sim("--fault-type", "dependency_timeout", "--severity", "P2", "--seed", "2", "--output", "markdown")
+        self.assertEqual(result.returncode, 0)
+        self.assertNotIn("| payment-gateway |", result.stdout)
 
 
 if __name__ == "__main__":
