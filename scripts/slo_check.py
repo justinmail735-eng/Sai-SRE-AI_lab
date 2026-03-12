@@ -51,6 +51,7 @@ def evaluate_service(
     required_windows: set[str],
     owner_email_domain: str | None,
     window_burn_overrides: dict[str, tuple[float, float]],
+    expected_window_minutes: dict[str, int],
 ) -> ServiceResult:
     name = service["name"]
     target = float(service["target_availability"])
@@ -99,6 +100,12 @@ def evaluate_service(
 
         if minutes <= 0:
             raise ValueError(f"service '{name}' window '{label}' must have minutes > 0")
+
+        expected_minutes = expected_window_minutes.get(label)
+        if expected_minutes is not None and minutes != expected_minutes:
+            raise ValueError(
+                f"service '{name}' window '{label}' has minutes={minutes}, expected {expected_minutes}"
+            )
         if total < 0 or errors < 0:
             raise ValueError(f"service '{name}' window '{label}' has negative request counts")
         if errors > total:
@@ -203,6 +210,18 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
 
         window_burn_overrides[label_str] = (override_warn, override_crit)
 
+    expected_window_minutes_raw = policy.get("window_minutes", {})
+    if not isinstance(expected_window_minutes_raw, dict):
+        raise ValueError("policy.window_minutes must be an object mapping labels to expected minute values")
+
+    expected_window_minutes: dict[str, int] = {}
+    for label, minutes in expected_window_minutes_raw.items():
+        label_str = str(label)
+        minutes_int = int(minutes)
+        if minutes_int <= 0:
+            raise ValueError(f"policy.window_minutes['{label_str}'] must be > 0")
+        expected_window_minutes[label_str] = minutes_int
+
     services = data.get("services", [])
     if not services:
         raise ValueError("no services were defined")
@@ -227,6 +246,7 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
             required_windows=required_windows,
             owner_email_domain=owner_email_domain,
             window_burn_overrides=window_burn_overrides,
+            expected_window_minutes=expected_window_minutes,
         )
         for s in services
     ]

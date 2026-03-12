@@ -186,6 +186,33 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("policy.min_requests_overrides['5m'] must be >= 0", result.stderr)
 
+    def test_window_minutes_policy_rejects_unexpected_minutes_for_label(self):
+        payload = base_payload()
+        payload["policy"]["window_minutes"] = {"5m": 5, "1h": 60}
+        payload["services"][0]["windows"][1]["minutes"] = 55
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("window '1h' has minutes=55, expected 60", result.stderr)
+
+    def test_window_minutes_policy_accepts_matching_minutes(self):
+        payload = base_payload()
+        payload["policy"]["window_minutes"] = {"5m": 5, "1h": 60}
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 0)
+
+    def test_window_minutes_policy_validation_rejects_non_positive_values(self):
+        payload = base_payload()
+        payload["policy"]["window_minutes"] = {"5m": 0}
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("policy.window_minutes['5m'] must be > 0", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

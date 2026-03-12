@@ -42,6 +42,7 @@ Helpful CI/automation flags:
 - `policy.owner_email_domain` (JSON field) to enforce service owner email domains (for example `"sai-lab.local"`)
 - `policy.window_burn_rate_overrides` (JSON field) to tune warning/critical burn thresholds by window label (for example stricter `5m` thresholds than `1h`)
 - `policy.min_requests_overrides` (JSON field) to set per-window traffic minimums for insufficient-data classification (for example higher confidence requirements on `1h` than `5m`)
+- `policy.window_minutes` (JSON field) to enforce canonical duration per window label across services (for example always `5m` = `5`, `1h` = `60`)
 
 ## Current Status
 See `docs/roadmap/SPRINT-7D.md` and `logs/daily/2026-02-23.md`.
