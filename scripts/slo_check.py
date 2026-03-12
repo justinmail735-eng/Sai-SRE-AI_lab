@@ -52,6 +52,7 @@ def evaluate_service(
     owner_email_domain: str | None,
     window_burn_overrides: dict[str, tuple[float, float]],
     expected_window_minutes: dict[str, int],
+    max_insufficient_windows: int,
 ) -> ServiceResult:
     name = service["name"]
     target = float(service["target_availability"])
@@ -85,7 +86,7 @@ def evaluate_service(
 
     windows: list[WindowResult] = []
     highest = "pass"
-    has_insufficient_data = False
+    insufficient_windows = 0
     seen_labels: set[str] = set()
 
     for item in windows_data:
@@ -118,7 +119,7 @@ def evaluate_service(
 
         if total < effective_min_requests:
             state = "insufficient-data"
-            has_insufficient_data = True
+            insufficient_windows += 1
         elif burn_rate >= effective_crit_burn:
             state = "critical"
             highest = "critical"
@@ -145,7 +146,7 @@ def evaluate_service(
         missing = ", ".join(missing_windows)
         raise ValueError(f"service '{name}' is missing required windows: {missing}")
 
-    if highest == "pass" and has_insufficient_data:
+    if highest == "pass" and insufficient_windows > max_insufficient_windows:
         highest = "insufficient-data"
 
     return ServiceResult(name=name, owner=owner, target=target, budget=budget, state=highest, windows=windows)
@@ -165,6 +166,10 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
         raise ValueError("policy.warning_burn_rate cannot exceed policy.critical_burn_rate")
 
     required_windows = {str(label) for label in policy.get("required_windows", [])}
+
+    max_insufficient_windows = int(policy.get("max_insufficient_windows", 0))
+    if max_insufficient_windows < 0:
+        raise ValueError("policy.max_insufficient_windows must be >= 0")
 
     min_requests_overrides_raw = policy.get("min_requests_overrides", {})
     if not isinstance(min_requests_overrides_raw, dict):
@@ -247,6 +252,7 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
             owner_email_domain=owner_email_domain,
             window_burn_overrides=window_burn_overrides,
             expected_window_minutes=expected_window_minutes,
+            max_insufficient_windows=max_insufficient_windows,
         )
         for s in services
     ]

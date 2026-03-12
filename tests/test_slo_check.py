@@ -213,6 +213,34 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("policy.window_minutes['5m'] must be > 0", result.stderr)
 
+    def test_max_insufficient_windows_allows_limited_insufficient_data(self):
+        payload = base_payload()
+        payload["services"][0]["windows"][0]["total_requests"] = 50
+        payload["services"][0]["windows"][0]["error_requests"] = 0
+
+        baseline = run_slo(payload, "--output", "json")
+
+        payload["policy"]["max_insufficient_windows"] = 1
+        tolerated = run_slo(payload, "--output", "json")
+
+        self.assertEqual(baseline.returncode, 0)
+        self.assertEqual(tolerated.returncode, 0)
+
+        baseline_parsed = json.loads(baseline.stdout)
+        tolerated_parsed = json.loads(tolerated.stdout)
+
+        self.assertEqual(baseline_parsed[0]["state"], "insufficient-data")
+        self.assertEqual(tolerated_parsed[0]["state"], "pass")
+
+    def test_max_insufficient_windows_validation_rejects_negative_values(self):
+        payload = base_payload()
+        payload["policy"]["max_insufficient_windows"] = -1
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("policy.max_insufficient_windows must be >= 0", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
