@@ -232,6 +232,7 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
         raise ValueError("no services were defined")
 
     seen_services: set[str] = set()
+    known_window_labels: set[str] = set()
     for s in services:
         name = str(s.get("name", "")).strip()
         if not name:
@@ -239,6 +240,23 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
         if name in seen_services:
             raise ValueError(f"duplicate service name '{name}'")
         seen_services.add(name)
+
+        for window in s.get("windows", []):
+            label = str(window.get("label", "")).strip()
+            if label:
+                known_window_labels.add(label)
+
+    override_label_sources = {
+        "policy.min_requests_overrides": set(min_requests_overrides.keys()),
+        "policy.window_burn_rate_overrides": set(window_burn_overrides.keys()),
+        "policy.window_minutes": set(expected_window_minutes.keys()),
+    }
+    for source_name, labels in override_label_sources.items():
+        unknown_labels = sorted(labels - known_window_labels)
+        if unknown_labels:
+            raise ValueError(
+                f"{source_name} contains unknown window labels: {', '.join(unknown_labels)}"
+            )
 
     return [
         evaluate_service(

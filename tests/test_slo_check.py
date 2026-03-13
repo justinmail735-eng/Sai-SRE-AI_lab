@@ -241,6 +241,26 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("policy.max_insufficient_windows must be >= 0", result.stderr)
 
+    def test_min_requests_overrides_rejects_unknown_window_labels(self):
+        payload = base_payload()
+        payload["policy"]["min_requests_overrides"] = {"6h": 1000}
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("policy.min_requests_overrides contains unknown window labels: 6h", result.stderr)
+
+    def test_window_burn_rate_overrides_rejects_unknown_window_labels(self):
+        payload = base_payload()
+        payload["policy"]["window_burn_rate_overrides"] = {
+            "6h": {"warning_burn_rate": 1.0, "critical_burn_rate": 2.0}
+        }
+
+        result = run_slo(payload)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("policy.window_burn_rate_overrides contains unknown window labels: 6h", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
