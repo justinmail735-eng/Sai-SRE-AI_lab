@@ -20,6 +20,7 @@ class WindowResult:
     error_requests: int
     availability: float
     burn_rate: float
+    budget_requests_remaining: int
     state: str
 
 
@@ -112,8 +113,13 @@ def evaluate_service(
         if errors > total:
             raise ValueError(f"service '{name}' window '{label}' has error_requests > total_requests")
 
-        availability = _safe_div(total - errors, total)
-        burn_rate = _safe_div((1.0 - availability), budget)
+        if total == 0:
+            # No observed traffic means no consumed error budget in this window.
+            availability = 1.0
+            burn_rate = 0.0
+        else:
+            availability = _safe_div(total - errors, total)
+            burn_rate = _safe_div((1.0 - availability), budget)
         effective_warn_burn, effective_crit_burn = window_burn_overrides.get(label, (warn_burn, crit_burn))
         effective_min_requests = min_requests_overrides.get(label, min_requests)
 
@@ -129,6 +135,7 @@ def evaluate_service(
         else:
             state = "pass"
 
+        budget_requests_remaining = max(0, int(total * budget - errors))
         windows.append(
             WindowResult(
                 label=label,
@@ -137,6 +144,7 @@ def evaluate_service(
                 error_requests=errors,
                 availability=availability,
                 burn_rate=burn_rate,
+                budget_requests_remaining=budget_requests_remaining,
                 state=state,
             )
         )
@@ -277,8 +285,9 @@ def evaluate(data: dict[str, Any], require_owner: bool = False) -> list[ServiceR
 
 
 def render(results: Iterable[ServiceResult]) -> str:
+    all_results = list(results)
     lines: list[str] = []
-    for service in results:
+    for service in all_results:
         lines.append(f"Service: {service.name}")
         lines.append(f"  Owner : {service.owner or 'unknown'}")
         lines.append(f"  Target: {_pct(service.target)} (budget {_pct(service.budget)})")
@@ -292,9 +301,17 @@ def render(results: Iterable[ServiceResult]) -> str:
                 f"{w.label:>4} ({w.minutes:>4}m) | "
                 f"availability={_pct(w.availability):>10} | "
                 f"burn={burn:>6} | "
+                f"budget_remaining={w.budget_requests_remaining:>6} req | "
                 f"state={w.state}"
             )
         lines.append("")
+
+    # Summary across all evaluated services
+    counts: dict[str, int] = {}
+    for r in all_results:
+        counts[r.state] = counts.get(r.state, 0) + 1
+    summary_parts = [f"{v} {k}" for k, v in sorted(counts.items())]
+    lines.append(f"SUMMARY: {len(all_results)} service(s) — {', '.join(summary_parts)}")
 
     return "\n".join(lines).rstrip()
 

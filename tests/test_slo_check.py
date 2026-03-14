@@ -261,6 +261,80 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("policy.window_burn_rate_overrides contains unknown window labels: 6h", result.stderr)
 
+    # ------------------------------------------------------------------
+    # budget_requests_remaining
+    # ------------------------------------------------------------------
+
+    def test_json_output_includes_budget_requests_remaining(self):
+        result = run_slo(base_payload(), "--output", "json")
+        self.assertEqual(result.returncode, 0)
+        parsed = json.loads(result.stdout)
+        for window in parsed[0]["windows"]:
+            self.assertIn("budget_requests_remaining", window)
+
+    def test_budget_requests_remaining_is_correct_for_healthy_window(self):
+        # 10000 total, 2 errors, budget=0.001 → budget_requests_remaining = int(10000*0.001 - 2) = 8
+        result = run_slo(base_payload(), "--output", "json")
+        self.assertEqual(result.returncode, 0)
+        parsed = json.loads(result.stdout)
+        by_label = {w["label"]: w for w in parsed[0]["windows"]}
+        self.assertEqual(by_label["5m"]["budget_requests_remaining"], 8)
+
+    def test_budget_requests_remaining_is_zero_when_over_budget(self):
+        payload = base_payload()
+        # 10000 total, 15 errors → error_rate=0.0015, budget=0.001 → over budget → clamp to 0
+        payload["services"][0]["windows"][0]["error_requests"] = 15
+        result = run_slo(payload, "--output", "json")
+        self.assertEqual(result.returncode, 0)
+        parsed = json.loads(result.stdout)
+        by_label = {w["label"]: w for w in parsed[0]["windows"]}
+        self.assertEqual(by_label["5m"]["budget_requests_remaining"], 0)
+
+    def test_budget_requests_remaining_is_zero_for_zero_traffic_window(self):
+        payload = base_payload()
+        payload["services"][0]["windows"][0]["total_requests"] = 0
+        payload["services"][0]["windows"][0]["error_requests"] = 0
+        payload["policy"]["min_requests"] = 0
+        result = run_slo(payload, "--output", "json")
+        self.assertEqual(result.returncode, 0)
+        parsed = json.loads(result.stdout)
+        by_label = {w["label"]: w for w in parsed[0]["windows"]}
+        self.assertEqual(by_label["5m"]["budget_requests_remaining"], 0)
+        self.assertEqual(by_label["5m"]["state"], "pass")
+
+    def test_text_output_includes_budget_remaining(self):
+        result = run_slo(base_payload())
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("budget_remaining=", result.stdout)
+
+    # ------------------------------------------------------------------
+    # Summary line in text render
+    # ------------------------------------------------------------------
+
+    def test_text_output_includes_summary_line(self):
+        result = run_slo(base_payload())
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("SUMMARY:", result.stdout)
+        self.assertIn("1 service(s)", result.stdout)
+
+    def test_summary_line_counts_multiple_services(self):
+        payload = base_payload()
+        # Add a second service that is in critical state
+        payload["services"].append({
+            "name": "slow-service",
+            "owner": "infra@sai-lab.local",
+            "target_availability": 0.999,
+            "windows": [
+                {"label": "5m", "minutes": 5, "total_requests": 10000, "error_requests": 300},
+            ],
+        })
+        result = run_slo(payload)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("SUMMARY:", result.stdout)
+        self.assertIn("2 service(s)", result.stdout)
+        self.assertIn("1 critical", result.stdout)
+        self.assertIn("1 pass", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
