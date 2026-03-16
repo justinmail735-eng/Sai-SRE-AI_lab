@@ -12,6 +12,7 @@ Usage
 -----
     python scripts/incident_sim.py --fault-type error_rate --service payments-api
     python scripts/incident_sim.py --fault-type cascade --severity P1 --output json
+    python scripts/incident_sim.py --start-time 2026-03-16T06:01:00Z --output markdown
     python scripts/incident_sim.py --list-runbooks
 """
 
@@ -104,6 +105,7 @@ class IncidentEvent:
     time_offset_sec: int
     event_type: str
     detail: str
+    event_time: str = ""
 
 
 @dataclass
@@ -228,6 +230,24 @@ def _scenario_id(fault_type: str, service: str, seed: int) -> str:
     return f"INC-{digest % 100000:05d}"
 
 
+def _attach_event_timestamps(
+    events: list[IncidentEvent],
+    start_time: datetime.datetime,
+) -> list[IncidentEvent]:
+    stamped: list[IncidentEvent] = []
+    for event in events:
+        event_time = (start_time + datetime.timedelta(seconds=event.time_offset_sec)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        stamped.append(
+            IncidentEvent(
+                time_offset_sec=event.time_offset_sec,
+                event_type=event.event_type,
+                detail=event.detail,
+                event_time=event_time,
+            )
+        )
+    return stamped
+
+
 def generate(
     fault_type: str,
     service: str,
@@ -247,9 +267,14 @@ def generate(
     rng = random.Random(effective_seed)
 
     ref = reference_time or datetime.datetime.now(datetime.timezone.utc)
+    if ref.tzinfo is None:
+        ref = ref.replace(tzinfo=datetime.timezone.utc)
+    else:
+        ref = ref.astimezone(datetime.timezone.utc)
     start_iso = ref.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     duration, events = _GENERATORS[fault_type](service, resolved_severity, rng)
+    events = _attach_event_timestamps(events, ref)
 
     runbook_key: tuple[str, str | None] = (fault_type, resolved_severity)
     runbook = RUNBOOKS.get(runbook_key) or RUNBOOKS.get((fault_type, None)) or "No runbook available."
@@ -283,7 +308,7 @@ def render(scenario: IncidentScenario) -> str:
     ]
     for ev in sorted(scenario.timeline, key=lambda e: e.time_offset_sec):
         ts = f"T+{ev.time_offset_sec // 60:02d}:{ev.time_offset_sec % 60:02d}"
-        lines.append(f"  {ts}  [{ev.event_type:25s}]  {ev.detail}")
+        lines.append(f"  {ts} ({ev.event_time})  [{ev.event_type:25s}]  {ev.detail}")
 
     lines += [
         "",
@@ -312,14 +337,14 @@ def to_markdown(scenario: IncidentScenario) -> str:
         "",
         "## Timeline",
         "",
-        "| Offset | Event | Detail |",
-        "|---|---|---|",
+        "| Offset | Event Time (UTC) | Event | Detail |",
+        "|---|---|---|---|",
     ]
 
     for ev in sorted(scenario.timeline, key=lambda e: e.time_offset_sec):
         ts = f"T+{ev.time_offset_sec // 60:02d}:{ev.time_offset_sec % 60:02d}"
         detail = ev.detail.replace("|", "\\|")
-        lines.append(f"| `{ts}` | `{ev.event_type}` | {detail} |")
+        lines.append(f"| `{ts}` | `{ev.event_time}` | `{ev.event_type}` | {detail} |")
 
     lines += ["", "## Runbook", ""]
     for line in scenario.runbook.splitlines():
@@ -366,6 +391,11 @@ def main() -> int:
         help="output format (default: text)",
     )
     parser.add_argument(
+        "--start-time",
+        default=None,
+        help="reference start time in ISO-8601 UTC (e.g. 2026-03-16T06:01:00Z)",
+    )
+    parser.add_argument(
         "--list-runbooks",
         action="store_true",
         help="print all available runbook keys and exit",
@@ -379,12 +409,27 @@ def main() -> int:
             print(f"  {label}")
         return 0
 
+    reference_time = None
+    if args.start_time:
+        normalized = args.start_time.strip()
+        if normalized.endswith("Z"):
+            normalized = normalized[:-1] + "+00:00"
+        try:
+            reference_time = datetime.datetime.fromisoformat(normalized)
+        except ValueError:
+            print(
+                "incident-sim: --start-time must be ISO-8601 (example: 2026-03-16T06:01:00Z)",
+                file=sys.stderr,
+            )
+            return 2
+
     try:
         scenario = generate(
             fault_type=args.fault_type,
             service=args.service,
             severity=args.severity,
             seed=args.seed,
+            reference_time=reference_time,
         )
     except ValueError as exc:
         print(f"incident-sim: {exc}", file=sys.stderr)

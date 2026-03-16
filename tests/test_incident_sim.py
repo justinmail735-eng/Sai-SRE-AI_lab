@@ -32,7 +32,7 @@ class IncidentSimBasicTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("# Incident Scenario", result.stdout)
         self.assertIn("## Timeline", result.stdout)
-        self.assertIn("| Offset | Event | Detail |", result.stdout)
+        self.assertIn("| Offset | Event Time (UTC) | Event | Detail |", result.stdout)
 
     def test_seed_produces_deterministic_output(self):
         r1 = run_sim("--fault-type", "latency_spike", "--seed", "42", "--output", "json")
@@ -50,6 +50,11 @@ class IncidentSimBasicTests(unittest.TestCase):
         result = run_sim("--fault-type", "not-a-fault")
         # argparse will reject this before our code runs (choices enforcement)
         self.assertNotEqual(result.returncode, 0)
+
+    def test_invalid_start_time_exits_two(self):
+        result = run_sim("--start-time", "not-a-time")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--start-time must be ISO-8601", result.stderr)
 
     def test_list_runbooks_exits_zero(self):
         result = run_sim("--list-runbooks")
@@ -125,6 +130,23 @@ class IncidentSimSeverityTests(unittest.TestCase):
         data = json.loads(result.stdout)
         offsets = [e["time_offset_sec"] for e in data["timeline"]]
         self.assertEqual(offsets, sorted(offsets))
+
+    def test_json_timeline_includes_event_time(self):
+        result = run_sim("--fault-type", "error_rate", "--seed", "42", "--output", "json")
+        data = json.loads(result.stdout)
+        self.assertTrue(all("event_time" in e for e in data["timeline"]))
+
+    def test_start_time_sets_first_event_timestamp(self):
+        result = run_sim(
+            "--fault-type", "error_rate",
+            "--seed", "42",
+            "--start-time", "2026-03-16T06:01:00Z",
+            "--output", "json",
+        )
+        data = json.loads(result.stdout)
+        self.assertEqual(data["start_time"], "2026-03-16T06:01:00Z")
+        first_event = min(data["timeline"], key=lambda e: e["time_offset_sec"])
+        self.assertEqual(first_event["event_time"], "2026-03-16T06:01:00Z")
 
     def test_resolved_event_time_equals_duration(self):
         result = run_sim("--fault-type", "latency_spike", "--seed", "1", "--output", "json")
