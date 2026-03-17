@@ -178,6 +178,11 @@ def main() -> int:
         action="store_true",
         help="fail if any service omits a non-empty owner field",
     )
+    parser.add_argument(
+        "--fail-on-insufficient-data",
+        action="store_true",
+        help="exit 1 if any evaluated window is marked insufficient-data",
+    )
     args = parser.parse_args()
 
     try:
@@ -199,6 +204,10 @@ def main() -> int:
     if any(r.state == "critical" for r in results):
         return 1
     if args.fail_on_warning and any(r.state == "warning" for r in results):
+        return 1
+    if args.fail_on_insufficient_data and any(
+        window.state == "insufficient-data" for service in results for window in service.windows
+    ):
         return 1
     return 0
 

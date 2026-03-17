@@ -59,6 +59,13 @@ def critical_payload():
     return payload
 
 
+def insufficient_data_payload():
+    payload = healthy_payload()
+    payload["services"][0]["windows"][0]["total_requests"] = 50
+    payload["services"][0]["windows"][0]["error_requests"] = 0
+    return payload
+
+
 class NightlyReportTextTests(unittest.TestCase):
     def test_healthy_run_exits_zero(self):
         result = run_report(healthy_payload())
@@ -97,6 +104,14 @@ class NightlyReportTextTests(unittest.TestCase):
 
     def test_fail_on_warning_exits_nonzero_for_warning(self):
         result = run_report(warning_payload(), "--fail-on-warning")
+        self.assertEqual(result.returncode, 1)
+
+    def test_insufficient_data_default_exits_zero(self):
+        result = run_report(insufficient_data_payload())
+        self.assertEqual(result.returncode, 0)
+
+    def test_fail_on_insufficient_data_exits_nonzero(self):
+        result = run_report(insufficient_data_payload(), "--fail-on-insufficient-data")
         self.assertEqual(result.returncode, 1)
 
     def test_invalid_policy_exits_two(self):

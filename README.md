@@ -38,6 +38,16 @@ Helpful CI/automation flags:
 - `--fail-on-warning` to fail builds on warning-level budget burn
 - `--fail-on-insufficient-data` to enforce minimum traffic confidence before passing CI
 - `--require-owner` to enforce service ownership metadata (non-empty `owner` per service)
+
+Nightly report generator:
+```bash
+python3 scripts/nightly_report.py --input projects/01-slo-engine/sample-slo.json --output markdown
+```
+
+Useful gates for nightly automation:
+- `--fail-on-warning` to fail nightly checks on warning-level burn
+- `--fail-on-insufficient-data` to fail nightly checks when windows lack minimum traffic volume
+- `--require-owner` to require an owner on every service
 - `policy.required_windows` (JSON field) to enforce a standard set of burn windows across every service (for example `["5m", "60m"]`)
 - `policy.owner_email_domain` (JSON field) to enforce service owner email domains (for example `"sai-lab.local"`)
 - `policy.window_burn_rate_overrides` (JSON field) to tune warning/critical burn thresholds by window label (for example stricter `5m` thresholds than `1h`)
