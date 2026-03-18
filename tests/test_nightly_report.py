@@ -136,6 +136,33 @@ class NightlyReportTextTests(unittest.TestCase):
         self.assertIn("2 service(s)", result.stdout)
         self.assertIn("checkout-worker", result.stdout)
 
+    def test_service_regex_filters_output_to_matching_services(self):
+        payload = healthy_payload()
+        payload["services"].append({
+            "name": "checkout-worker",
+            "owner": "platform@example.com",
+            "target_availability": 0.995,
+            "windows": [
+                {"label": "5m", "minutes": 5, "total_requests": 5000, "error_requests": 1},
+                {"label": "1h", "minutes": 60, "total_requests": 50000, "error_requests": 10},
+            ],
+        })
+        result = run_report(payload, "--service-regex", "^checkout")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("checkout-worker", result.stdout)
+        self.assertNotIn("payments-api", result.stdout)
+        self.assertIn("1 service(s)", result.stdout)
+
+    def test_service_regex_with_no_matches_exits_two(self):
+        result = run_report(healthy_payload(), "--service-regex", "^does-not-exist$")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("matched no services", result.stderr)
+
+    def test_service_regex_invalid_pattern_exits_two(self):
+        result = run_report(healthy_payload(), "--service-regex", "[")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid --service-regex", result.stderr)
+
 
 class NightlyReportJsonTests(unittest.TestCase):
     def test_json_output_is_valid(self):

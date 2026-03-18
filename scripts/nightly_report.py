@@ -17,6 +17,7 @@ import argparse
 import datetime
 import json
 import math
+import re
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -183,6 +184,11 @@ def main() -> int:
         action="store_true",
         help="exit 1 if any evaluated window is marked insufficient-data",
     )
+    parser.add_argument(
+        "--service-regex",
+        default=None,
+        help="optional regex to evaluate and render only matching services by name",
+    )
     args = parser.parse_args()
 
     try:
@@ -191,6 +197,22 @@ def main() -> int:
     except Exception as exc:
         print(f"nightly-report: failed to evaluate policy: {exc}", file=sys.stderr)
         return 2
+
+    if args.service_regex:
+        try:
+            service_pattern = re.compile(args.service_regex)
+        except re.error as exc:
+            print(f"nightly-report: invalid --service-regex pattern: {exc}", file=sys.stderr)
+            return 2
+
+        filtered = [svc for svc in results if service_pattern.search(svc.name)]
+        if not filtered:
+            print(
+                f"nightly-report: --service-regex '{args.service_regex}' matched no services",
+                file=sys.stderr,
+            )
+            return 2
+        results = filtered
 
     generated_at = datetime.datetime.utcnow()
 

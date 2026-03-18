@@ -48,6 +48,7 @@ Useful gates for nightly automation:
 - `--fail-on-warning` to fail nightly checks on warning-level burn
 - `--fail-on-insufficient-data` to fail nightly checks when windows lack minimum traffic volume
 - `--require-owner` to require an owner on every service
+- `--service-regex` to focus evaluation/report output to matching service names (for example `^checkout-`)
 - `policy.required_windows` (JSON field) to enforce a standard set of burn windows across every service (for example `["5m", "60m"]`)
 - `policy.owner_email_domain` (JSON field) to enforce service owner email domains (for example `"sai-lab.local"`)
 - `policy.window_burn_rate_overrides` (JSON field) to tune warning/critical burn thresholds by window label (for example stricter `5m` thresholds than `1h`)
