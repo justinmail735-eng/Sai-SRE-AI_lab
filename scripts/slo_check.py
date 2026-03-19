@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -340,6 +341,11 @@ def main() -> int:
         action="store_true",
         help="return non-zero if any service omits a non-empty owner field",
     )
+    parser.add_argument(
+        "--service-regex",
+        default=None,
+        help="optional regex to evaluate and render only matching services by name",
+    )
     args = parser.parse_args()
 
     try:
@@ -348,6 +354,22 @@ def main() -> int:
     except Exception as exc:  # broad by design: CI should fail with clear error
         print(f"slo-check: failed to evaluate policy: {exc}", file=sys.stderr)
         return 2
+
+    if args.service_regex:
+        try:
+            service_pattern = re.compile(args.service_regex)
+        except re.error as exc:
+            print(f"slo-check: invalid --service-regex pattern: {exc}", file=sys.stderr)
+            return 2
+
+        filtered = [svc for svc in results if service_pattern.search(svc.name)]
+        if not filtered:
+            print(
+                f"slo-check: --service-regex '{args.service_regex}' matched no services",
+                file=sys.stderr,
+            )
+            return 2
+        results = filtered
 
     if args.output == "json":
         print(to_json(results))

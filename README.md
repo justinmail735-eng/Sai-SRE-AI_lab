@@ -38,6 +38,7 @@ Helpful CI/automation flags:
 - `--fail-on-warning` to fail builds on warning-level budget burn
 - `--fail-on-insufficient-data` to enforce minimum traffic confidence before passing CI
 - `--require-owner` to enforce service ownership metadata (non-empty `owner` per service)
+- `--service-regex` to scope checks to matching service names (for example `^checkout-`)
 
 Nightly report generator:
 ```bash

@@ -261,6 +261,36 @@ class SloCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("policy.window_burn_rate_overrides contains unknown window labels: 6h", result.stderr)
 
+    def test_service_regex_filters_output_to_matching_services(self):
+        payload = base_payload()
+        payload["services"].append({
+            "name": "worker",
+            "owner": "batch@sai-lab.local",
+            "target_availability": 0.999,
+            "windows": [
+                {"label": "5m", "minutes": 5, "total_requests": 20000, "error_requests": 1},
+            ],
+        })
+
+        result = run_slo(payload, "--output", "json", "--service-regex", "^work")
+
+        self.assertEqual(result.returncode, 0)
+        parsed = json.loads(result.stdout)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]["name"], "worker")
+
+    def test_service_regex_rejects_invalid_patterns(self):
+        result = run_slo(base_payload(), "--service-regex", "*(invalid")
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid --service-regex pattern", result.stderr)
+
+    def test_service_regex_rejects_when_no_services_match(self):
+        result = run_slo(base_payload(), "--service-regex", "^does-not-exist$")
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("matched no services", result.stderr)
+
     # ------------------------------------------------------------------
     # budget_requests_remaining
     # ------------------------------------------------------------------
