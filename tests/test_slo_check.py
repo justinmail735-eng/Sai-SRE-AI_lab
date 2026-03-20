@@ -292,6 +292,41 @@ class SloCheckTests(unittest.TestCase):
         self.assertIn("matched no services", result.stderr)
 
     # ------------------------------------------------------------------
+    # --only-state filtering
+    # ------------------------------------------------------------------
+
+    def test_only_state_filters_to_matching_service_states(self):
+        payload = base_payload()
+        payload["services"].append({
+            "name": "critical-worker",
+            "owner": "batch@sai-lab.local",
+            "target_availability": 0.999,
+            "windows": [
+                {"label": "5m", "minutes": 5, "total_requests": 10000, "error_requests": 300},
+            ],
+        })
+
+        result = run_slo(payload, "--output", "json", "--only-state", "critical")
+
+        self.assertEqual(result.returncode, 1)
+        parsed = json.loads(result.stdout)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]["name"], "critical-worker")
+        self.assertEqual(parsed[0]["state"], "critical")
+
+    def test_only_state_rejects_invalid_state_values(self):
+        result = run_slo(base_payload(), "--only-state", "critical,banana")
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid --only-state value(s): banana", result.stderr)
+
+    def test_only_state_rejects_when_no_services_match(self):
+        result = run_slo(base_payload(), "--only-state", "critical")
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("matched no services", result.stderr)
+
+    # ------------------------------------------------------------------
     # budget_requests_remaining
     # ------------------------------------------------------------------
 

@@ -346,6 +346,11 @@ def main() -> int:
         default=None,
         help="optional regex to evaluate and render only matching services by name",
     )
+    parser.add_argument(
+        "--only-state",
+        default=None,
+        help="optional comma-separated service states to include (pass, warning, critical, insufficient-data)",
+    )
     args = parser.parse_args()
 
     try:
@@ -370,6 +375,29 @@ def main() -> int:
             )
             return 2
         results = filtered
+
+    if args.only_state:
+        valid_states = {"pass", "warning", "critical", "insufficient-data"}
+        requested_states = {state.strip().lower() for state in args.only_state.split(",") if state.strip()}
+        invalid_states = sorted(requested_states - valid_states)
+        if invalid_states:
+            print(
+                "slo-check: invalid --only-state value(s): " + ", ".join(invalid_states),
+                file=sys.stderr,
+            )
+            return 2
+        if not requested_states:
+            print("slo-check: --only-state requires at least one state", file=sys.stderr)
+            return 2
+
+        filtered_by_state = [svc for svc in results if svc.state in requested_states]
+        if not filtered_by_state:
+            print(
+                f"slo-check: --only-state '{args.only_state}' matched no services",
+                file=sys.stderr,
+            )
+            return 2
+        results = filtered_by_state
 
     if args.output == "json":
         print(to_json(results))

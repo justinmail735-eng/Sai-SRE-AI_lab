@@ -39,6 +39,7 @@ Helpful CI/automation flags:
 - `--fail-on-insufficient-data` to enforce minimum traffic confidence before passing CI
 - `--require-owner` to enforce service ownership metadata (non-empty `owner` per service)
 - `--service-regex` to scope checks to matching service names (for example `^checkout-`)
+- `--only-state` to return only services in specific states (comma-separated: `pass,warning,critical,insufficient-data`)
 
 Nightly report generator:
 ```bash
