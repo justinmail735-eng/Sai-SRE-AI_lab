@@ -66,6 +66,20 @@ def insufficient_data_payload():
     return payload
 
 
+def mixed_state_payload():
+    payload = healthy_payload()
+    payload["services"].append({
+        "name": "checkout-worker",
+        "owner": "platform@example.com",
+        "target_availability": 0.999,
+        "windows": [
+            {"label": "5m", "minutes": 5, "total_requests": 5000, "error_requests": 6},
+            {"label": "1h", "minutes": 60, "total_requests": 50000, "error_requests": 10},
+        ],
+    })
+    return payload
+
+
 class NightlyReportTextTests(unittest.TestCase):
     def test_healthy_run_exits_zero(self):
         result = run_report(healthy_payload())
@@ -162,6 +176,28 @@ class NightlyReportTextTests(unittest.TestCase):
         result = run_report(healthy_payload(), "--service-regex", "[")
         self.assertEqual(result.returncode, 2)
         self.assertIn("invalid --service-regex", result.stderr)
+
+    def test_only_state_filters_output_to_matching_states(self):
+        result = run_report(mixed_state_payload(), "--only-state", "pass")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("payments-api", result.stdout)
+        self.assertNotIn("checkout-worker", result.stdout)
+
+    def test_only_state_warning_matches_warning_services(self):
+        result = run_report(mixed_state_payload(), "--only-state", "warning")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("checkout-worker", result.stdout)
+        self.assertNotIn("payments-api", result.stdout)
+
+    def test_only_state_with_no_matches_exits_two(self):
+        result = run_report(critical_payload(), "--only-state", "warning")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("matched no services", result.stderr)
+
+    def test_only_state_invalid_value_exits_two(self):
+        result = run_report(healthy_payload(), "--only-state", "banana")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid --only-state", result.stderr)
 
 
 class NightlyReportJsonTests(unittest.TestCase):
