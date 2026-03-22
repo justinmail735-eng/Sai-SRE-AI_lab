@@ -80,6 +80,40 @@ def mixed_state_payload():
     return payload
 
 
+def triage_payload():
+    payload = healthy_payload()
+    payload["services"] = [
+        {
+            "name": "beta-pass",
+            "owner": "sre@example.com",
+            "target_availability": 0.999,
+            "windows": [
+                {"label": "5m", "minutes": 5, "total_requests": 10000, "error_requests": 1},
+                {"label": "1h", "minutes": 60, "total_requests": 100000, "error_requests": 5},
+            ],
+        },
+        {
+            "name": "zeta-critical",
+            "owner": "sre@example.com",
+            "target_availability": 0.999,
+            "windows": [
+                {"label": "5m", "minutes": 5, "total_requests": 10000, "error_requests": 30},
+                {"label": "1h", "minutes": 60, "total_requests": 100000, "error_requests": 5},
+            ],
+        },
+        {
+            "name": "alpha-warning",
+            "owner": "sre@example.com",
+            "target_availability": 0.999,
+            "windows": [
+                {"label": "5m", "minutes": 5, "total_requests": 10000, "error_requests": 15},
+                {"label": "1h", "minutes": 60, "total_requests": 100000, "error_requests": 5},
+            ],
+        },
+    ]
+    return payload
+
+
 class NightlyReportTextTests(unittest.TestCase):
     def test_healthy_run_exits_zero(self):
         result = run_report(healthy_payload())
@@ -198,6 +232,35 @@ class NightlyReportTextTests(unittest.TestCase):
         result = run_report(healthy_payload(), "--only-state", "banana")
         self.assertEqual(result.returncode, 2)
         self.assertIn("invalid --only-state", result.stderr)
+
+    def test_default_sort_orders_by_severity(self):
+        result = run_report(triage_payload())
+        self.assertEqual(result.returncode, 1)
+        critical_idx = result.stdout.find("zeta-critical")
+        warning_idx = result.stdout.find("alpha-warning")
+        pass_idx = result.stdout.find("beta-pass")
+        self.assertTrue(critical_idx < warning_idx < pass_idx)
+
+    def test_sort_name_orders_alphabetically(self):
+        result = run_report(triage_payload(), "--sort", "name")
+        self.assertEqual(result.returncode, 1)
+        alpha_idx = result.stdout.find("alpha-warning")
+        beta_idx = result.stdout.find("beta-pass")
+        zeta_idx = result.stdout.find("zeta-critical")
+        self.assertTrue(alpha_idx < beta_idx < zeta_idx)
+
+    def test_limit_keeps_top_n_after_sort(self):
+        result = run_report(triage_payload(), "--limit", "2")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("zeta-critical", result.stdout)
+        self.assertIn("alpha-warning", result.stdout)
+        self.assertNotIn("beta-pass", result.stdout)
+        self.assertIn("2 service(s)", result.stdout)
+
+    def test_limit_must_be_positive(self):
+        result = run_report(healthy_payload(), "--limit", "0")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--limit must be >= 1", result.stderr)
 
 
 class NightlyReportJsonTests(unittest.TestCase):

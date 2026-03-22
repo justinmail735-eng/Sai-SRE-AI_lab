@@ -46,6 +46,14 @@ def _worst_window(service: ServiceResult) -> WindowResult | None:
     )
 
 
+def _service_sort_key(service: ServiceResult) -> tuple[int, float, str]:
+    """Sort by severity, then worst-window burn-rate descending, then name."""
+    priority = {"critical": 0, "warning": 1, "insufficient-data": 2, "pass": 3}
+    worst = _worst_window(service)
+    burn = worst.burn_rate if worst else 0.0
+    return (priority.get(service.state, 9), -burn, service.name)
+
+
 def _burn_str(burn_rate: float) -> str:
     return "inf" if math.isinf(burn_rate) else f"{burn_rate:.2f}x"
 
@@ -194,6 +202,18 @@ def main() -> int:
         default=None,
         help="optional comma-separated service states to include (pass, warning, critical, insufficient-data)",
     )
+    parser.add_argument(
+        "--sort",
+        choices=("severity", "name"),
+        default="severity",
+        help="service ordering for report output: severity (default) or name",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="optional max number of services to include after filtering/sorting",
+    )
     args = parser.parse_args()
 
     try:
@@ -241,6 +261,20 @@ def main() -> int:
             )
             return 2
         results = filtered_by_state
+
+    if args.sort == "name":
+        results = sorted(results, key=lambda svc: svc.name)
+    else:
+        results = sorted(results, key=_service_sort_key)
+
+    if args.limit is not None:
+        if args.limit < 1:
+            print("nightly-report: --limit must be >= 1", file=sys.stderr)
+            return 2
+        results = results[: args.limit]
+        if not results:
+            print("nightly-report: --limit excluded all services", file=sys.stderr)
+            return 2
 
     generated_at = datetime.datetime.utcnow()
 
