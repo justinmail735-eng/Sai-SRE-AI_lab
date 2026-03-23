@@ -198,6 +198,11 @@ def main() -> int:
         help="optional regex to evaluate and render only matching services by name",
     )
     parser.add_argument(
+        "--owner-regex",
+        default=None,
+        help="optional regex to include only services whose owner matches (owner is treated as empty when missing)",
+    )
+    parser.add_argument(
         "--only-state",
         default=None,
         help="optional comma-separated service states to include (pass, warning, critical, insufficient-data)",
@@ -234,6 +239,22 @@ def main() -> int:
         if not filtered:
             print(
                 f"nightly-report: --service-regex '{args.service_regex}' matched no services",
+                file=sys.stderr,
+            )
+            return 2
+        results = filtered
+
+    if args.owner_regex:
+        try:
+            owner_pattern = re.compile(args.owner_regex)
+        except re.error as exc:
+            print(f"nightly-report: invalid --owner-regex pattern: {exc}", file=sys.stderr)
+            return 2
+
+        filtered = [svc for svc in results if owner_pattern.search(svc.owner or "")]
+        if not filtered:
+            print(
+                f"nightly-report: --owner-regex '{args.owner_regex}' matched no services",
                 file=sys.stderr,
             )
             return 2
