@@ -58,7 +58,11 @@ def _burn_str(burn_rate: float) -> str:
     return "inf" if math.isinf(burn_rate) else f"{burn_rate:.2f}x"
 
 
-def _render_text(results: List[ServiceResult], generated_at: datetime.datetime) -> str:
+def _render_text(
+    results: List[ServiceResult],
+    generated_at: datetime.datetime,
+    summary_only: bool = False,
+) -> str:
     ts = generated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
     lines: list[str] = [
         f"Nightly SLO Report — {ts}",
@@ -66,19 +70,20 @@ def _render_text(results: List[ServiceResult], generated_at: datetime.datetime) 
         "",
     ]
 
-    for svc in results:
-        tag = _STATE_ICON.get(svc.state, "?")
-        lines.append(f"  [{tag}] {svc.name} ({svc.state.upper()})")
-        lines.append(f"    Owner  : {svc.owner or 'unknown'}")
-        lines.append(f"    Target : {svc.target * 100:.3f}%  budget={svc.budget * 100:.4f}%")
-        for w in svc.windows:
-            lines.append(
-                f"      [{w.state:>17}] {w.label:>4} ({w.minutes}m)  "
-                f"burn={_burn_str(w.burn_rate):>6}  "
-                f"avail={w.availability * 100:.4f}%  "
-                f"budget_remaining={w.budget_requests_remaining} req"
-            )
-        lines.append("")
+    if not summary_only:
+        for svc in results:
+            tag = _STATE_ICON.get(svc.state, "?")
+            lines.append(f"  [{tag}] {svc.name} ({svc.state.upper()})")
+            lines.append(f"    Owner  : {svc.owner or 'unknown'}")
+            lines.append(f"    Target : {svc.target * 100:.3f}%  budget={svc.budget * 100:.4f}%")
+            for w in svc.windows:
+                lines.append(
+                    f"      [{w.state:>17}] {w.label:>4} ({w.minutes}m)  "
+                    f"burn={_burn_str(w.burn_rate):>6}  "
+                    f"avail={w.availability * 100:.4f}%  "
+                    f"budget_remaining={w.budget_requests_remaining} req"
+                )
+            lines.append("")
 
     counts: dict[str, int] = {}
     for r in results:
@@ -100,28 +105,36 @@ def _render_text(results: List[ServiceResult], generated_at: datetime.datetime) 
     return "\n".join(lines)
 
 
-def _render_markdown(results: List[ServiceResult], generated_at: datetime.datetime) -> str:
+def _render_markdown(
+    results: List[ServiceResult],
+    generated_at: datetime.datetime,
+    summary_only: bool = False,
+) -> str:
     ts = generated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
     lines: list[str] = [
         "# Nightly SLO Report",
         "",
         f"Generated: {ts}",
-        "",
-        "## Service Status",
-        "",
-        "| Service | Owner | Target | State | Worst Window | Burn Rate |",
-        "|---------|-------|--------|-------|--------------|-----------|",
     ]
 
-    for svc in results:
-        worst = _worst_window(svc)
-        worst_label = worst.label if worst else ""
-        worst_burn = _burn_str(worst.burn_rate) if worst else ""
-        owner = (svc.owner or "unknown").replace("|", "\\|")
-        lines.append(
-            f"| {svc.name} | {owner} | {svc.target * 100:.3f}% | "
-            f"{svc.state} | {worst_label} | {worst_burn} |"
-        )
+    if not summary_only:
+        lines += [
+            "",
+            "## Service Status",
+            "",
+            "| Service | Owner | Target | State | Worst Window | Burn Rate |",
+            "|---------|-------|--------|-------|--------------|-----------|",
+        ]
+
+        for svc in results:
+            worst = _worst_window(svc)
+            worst_label = worst.label if worst else ""
+            worst_burn = _burn_str(worst.burn_rate) if worst else ""
+            owner = (svc.owner or "unknown").replace("|", "\\|")
+            lines.append(
+                f"| {svc.name} | {owner} | {svc.target * 100:.3f}% | "
+                f"{svc.state} | {worst_label} | {worst_burn} |"
+            )
 
     counts: dict[str, int] = {}
     for r in results:
@@ -147,18 +160,42 @@ def _render_markdown(results: List[ServiceResult], generated_at: datetime.dateti
     return "\n".join(lines)
 
 
-def _render_json(results: List[ServiceResult], generated_at: datetime.datetime) -> str:
+def _render_json(
+    results: List[ServiceResult],
+    generated_at: datetime.datetime,
+    summary_only: bool = False,
+) -> str:
     counts: dict[str, int] = {}
     for r in results:
         counts[r.state] = counts.get(r.state, 0) + 1
-    return json.dumps(
-        {
-            "generated_at": generated_at.isoformat(),
-            "services": [asdict(r) for r in results],
-            "summary": counts,
-        },
-        indent=2,
-    )
+    payload = {
+        "generated_at": generated_at.isoformat(),
+        "summary": counts,
+    }
+
+    if summary_only:
+        payload["alerts"] = [
+            {
+                "name": svc.name,
+                "state": svc.state,
+                "owner": svc.owner,
+                "worst_window": (
+                    {
+                        "label": worst.label,
+                        "burn_rate": worst.burn_rate,
+                        "window_minutes": worst.minutes,
+                    }
+                    if (worst := _worst_window(svc))
+                    else None
+                ),
+            }
+            for svc in results
+            if svc.state in ("critical", "warning")
+        ]
+    else:
+        payload["services"] = [asdict(r) for r in results]
+
+    return json.dumps(payload, indent=2)
 
 
 def main() -> int:
@@ -218,6 +255,11 @@ def main() -> int:
         type=int,
         default=None,
         help="optional max number of services to include after filtering/sorting",
+    )
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="emit compact output with summary (+ alerts) and omit per-service detail",
     )
     args = parser.parse_args()
 
@@ -300,11 +342,11 @@ def main() -> int:
     generated_at = datetime.datetime.utcnow()
 
     if args.output == "json":
-        print(_render_json(results, generated_at))
+        print(_render_json(results, generated_at, summary_only=args.summary_only))
     elif args.output == "markdown":
-        print(_render_markdown(results, generated_at))
+        print(_render_markdown(results, generated_at, summary_only=args.summary_only))
     else:
-        print(_render_text(results, generated_at))
+        print(_render_text(results, generated_at, summary_only=args.summary_only))
 
     if any(r.state == "critical" for r in results):
         return 1

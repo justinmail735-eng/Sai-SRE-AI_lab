@@ -302,6 +302,13 @@ class NightlyReportTextTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("--limit must be >= 1", result.stderr)
 
+    def test_summary_only_text_omits_service_details(self):
+        result = run_report(healthy_payload(), "--summary-only")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("SUMMARY:", result.stdout)
+        self.assertNotIn("Owner  :", result.stdout)
+        self.assertNotIn("budget_remaining=", result.stdout)
+
 
 class NightlyReportJsonTests(unittest.TestCase):
     def test_json_output_is_valid(self):
@@ -341,6 +348,14 @@ class NightlyReportJsonTests(unittest.TestCase):
         data = json.loads(result.stdout)
         self.assertEqual(data["services"][0]["state"], "critical")
 
+    def test_json_summary_only_emits_alerts_without_services(self):
+        result = run_report(critical_payload(), "--output", "json", "--summary-only")
+        self.assertEqual(result.returncode, 1)
+        data = json.loads(result.stdout)
+        self.assertIn("alerts", data)
+        self.assertNotIn("services", data)
+        self.assertEqual(data["alerts"][0]["state"], "critical")
+
 
 class NightlyReportMarkdownTests(unittest.TestCase):
     def test_markdown_output_has_h1_header(self):
@@ -370,6 +385,13 @@ class NightlyReportMarkdownTests(unittest.TestCase):
     def test_markdown_generated_at_timestamp_present(self):
         result = run_report(healthy_payload(), "--output", "markdown")
         self.assertIn("Generated:", result.stdout)
+
+    def test_markdown_summary_only_omits_service_table(self):
+        result = run_report(healthy_payload(), "--output", "markdown", "--summary-only")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("## Summary", result.stdout)
+        self.assertNotIn("## Service Status", result.stdout)
+        self.assertNotIn("| Service | Owner |", result.stdout)
 
 
 if __name__ == "__main__":
