@@ -261,6 +261,12 @@ def main() -> int:
         action="store_true",
         help="emit compact output with summary (+ alerts) and omit per-service detail",
     )
+    parser.add_argument(
+        "--min-burn-rate",
+        type=float,
+        default=None,
+        help="optional filter to include only services whose worst-window burn rate is >= this value",
+    )
     args = parser.parse_args()
 
     try:
@@ -324,6 +330,23 @@ def main() -> int:
             )
             return 2
         results = filtered_by_state
+
+    if args.min_burn_rate is not None:
+        if args.min_burn_rate < 0:
+            print("nightly-report: --min-burn-rate must be >= 0", file=sys.stderr)
+            return 2
+
+        filtered_by_burn = [
+            svc for svc in results
+            if (worst := _worst_window(svc)) is not None and worst.burn_rate >= args.min_burn_rate
+        ]
+        if not filtered_by_burn:
+            print(
+                f"nightly-report: --min-burn-rate '{args.min_burn_rate}' matched no services",
+                file=sys.stderr,
+            )
+            return 2
+        results = filtered_by_burn
 
     if args.sort == "name":
         results = sorted(results, key=lambda svc: svc.name)

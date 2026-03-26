@@ -309,6 +309,24 @@ class NightlyReportTextTests(unittest.TestCase):
         self.assertNotIn("Owner  :", result.stdout)
         self.assertNotIn("budget_remaining=", result.stdout)
 
+    def test_min_burn_rate_filters_services_by_worst_window(self):
+        result = run_report(triage_payload(), "--min-burn-rate", "2.0")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("zeta-critical", result.stdout)
+        self.assertNotIn("alpha-warning", result.stdout)
+        self.assertNotIn("beta-pass", result.stdout)
+        self.assertIn("1 service(s)", result.stdout)
+
+    def test_min_burn_rate_negative_value_exits_two(self):
+        result = run_report(healthy_payload(), "--min-burn-rate", "-0.1")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--min-burn-rate must be >= 0", result.stderr)
+
+    def test_min_burn_rate_with_no_matches_exits_two(self):
+        result = run_report(healthy_payload(), "--min-burn-rate", "10")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("matched no services", result.stderr)
+
 
 class NightlyReportJsonTests(unittest.TestCase):
     def test_json_output_is_valid(self):

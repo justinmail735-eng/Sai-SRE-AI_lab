@@ -56,6 +56,7 @@ Useful gates for nightly automation:
 - `--sort` to order output by `severity` (default triage order) or `name`
 - `--limit` to keep only the top N services after filtering/sorting (useful for pager digests)
 - `--summary-only` to emit a compact summary + alert list without full per-service detail
+- `--min-burn-rate` to include only services whose worst burn window meets/exceeds a threshold (for triaging the hottest issues first)
 - `policy.required_windows` (JSON field) to enforce a standard set of burn windows across every service (for example `["5m", "60m"]`)
 - `policy.owner_email_domain` (JSON field) to enforce service owner email domains (for example `"sai-lab.local"`)
 - `policy.window_burn_rate_overrides` (JSON field) to tune warning/critical burn thresholds by window label (for example stricter `5m` thresholds than `1h`)
