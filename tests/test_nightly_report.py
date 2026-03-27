@@ -327,6 +327,25 @@ class NightlyReportTextTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("matched no services", result.stderr)
 
+    def test_output_file_writes_report_and_keeps_stdout(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out_path = Path(tmp_dir) / "nightly" / "report.txt"
+            result = run_report(healthy_payload(), "--output-file", str(out_path))
+            self.assertEqual(result.returncode, 0)
+            self.assertTrue(out_path.exists())
+            file_contents = out_path.read_text()
+            self.assertIn("Nightly SLO Report", file_contents)
+            self.assertIn("Nightly SLO Report", result.stdout)
+
+    def test_output_file_write_failure_exits_two(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # A directory path cannot be opened for file writes.
+            dir_path = Path(tmp_dir) / "as-directory"
+            dir_path.mkdir()
+            result = run_report(healthy_payload(), "--output-file", str(dir_path))
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("failed to write --output-file", result.stderr)
+
 
 class NightlyReportJsonTests(unittest.TestCase):
     def test_json_output_is_valid(self):

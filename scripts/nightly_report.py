@@ -267,6 +267,12 @@ def main() -> int:
         default=None,
         help="optional filter to include only services whose worst-window burn rate is >= this value",
     )
+    parser.add_argument(
+        "--output-file",
+        type=Path,
+        default=None,
+        help="optional path to write rendered report output (stdout is still emitted)",
+    )
     args = parser.parse_args()
 
     try:
@@ -365,11 +371,21 @@ def main() -> int:
     generated_at = datetime.datetime.utcnow()
 
     if args.output == "json":
-        print(_render_json(results, generated_at, summary_only=args.summary_only))
+        rendered_output = _render_json(results, generated_at, summary_only=args.summary_only)
     elif args.output == "markdown":
-        print(_render_markdown(results, generated_at, summary_only=args.summary_only))
+        rendered_output = _render_markdown(results, generated_at, summary_only=args.summary_only)
     else:
-        print(_render_text(results, generated_at, summary_only=args.summary_only))
+        rendered_output = _render_text(results, generated_at, summary_only=args.summary_only)
+
+    if args.output_file is not None:
+        try:
+            args.output_file.parent.mkdir(parents=True, exist_ok=True)
+            args.output_file.write_text(rendered_output + "\n")
+        except OSError as exc:
+            print(f"nightly-report: failed to write --output-file: {exc}", file=sys.stderr)
+            return 2
+
+    print(rendered_output)
 
     if any(r.state == "critical" for r in results):
         return 1
