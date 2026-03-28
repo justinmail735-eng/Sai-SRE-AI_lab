@@ -262,6 +262,11 @@ def main() -> int:
         help="emit compact output with summary (+ alerts) and omit per-service detail",
     )
     parser.add_argument(
+        "--alerts-only",
+        action="store_true",
+        help="include only services in warning/critical state",
+    )
+    parser.add_argument(
         "--min-burn-rate",
         type=float,
         default=None,
@@ -336,6 +341,13 @@ def main() -> int:
             )
             return 2
         results = filtered_by_state
+
+    if args.alerts_only:
+        filtered_alerts = [svc for svc in results if svc.state in {"warning", "critical"}]
+        if not filtered_alerts:
+            print("nightly-report: --alerts-only matched no services", file=sys.stderr)
+            return 2
+        results = filtered_alerts
 
     if args.min_burn_rate is not None:
         if args.min_burn_rate < 0:

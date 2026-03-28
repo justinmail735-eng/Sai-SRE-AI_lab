@@ -309,6 +309,19 @@ class NightlyReportTextTests(unittest.TestCase):
         self.assertNotIn("Owner  :", result.stdout)
         self.assertNotIn("budget_remaining=", result.stdout)
 
+    def test_alerts_only_includes_warning_and_critical(self):
+        result = run_report(triage_payload(), "--alerts-only")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("zeta-critical", result.stdout)
+        self.assertIn("alpha-warning", result.stdout)
+        self.assertNotIn("beta-pass", result.stdout)
+        self.assertIn("2 service(s)", result.stdout)
+
+    def test_alerts_only_no_matches_exits_two(self):
+        result = run_report(healthy_payload(), "--alerts-only")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--alerts-only matched no services", result.stderr)
+
     def test_min_burn_rate_filters_services_by_worst_window(self):
         result = run_report(triage_payload(), "--min-burn-rate", "2.0")
         self.assertEqual(result.returncode, 1)
