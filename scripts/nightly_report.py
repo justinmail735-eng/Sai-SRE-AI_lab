@@ -276,9 +276,18 @@ def main() -> int:
         "--output-file",
         type=Path,
         default=None,
-        help="optional path to write rendered report output (stdout is still emitted)",
+        help="optional path to write rendered report output (stdout is still emitted unless --no-stdout)",
+    )
+    parser.add_argument(
+        "--no-stdout",
+        action="store_true",
+        help="suppress stdout output (requires --output-file)",
     )
     args = parser.parse_args()
+
+    if args.no_stdout and args.output_file is None:
+        print("nightly-report: --no-stdout requires --output-file", file=sys.stderr)
+        return 2
 
     try:
         data = json.loads(args.input.read_text())
@@ -392,12 +401,15 @@ def main() -> int:
     if args.output_file is not None:
         try:
             args.output_file.parent.mkdir(parents=True, exist_ok=True)
-            args.output_file.write_text(rendered_output + "\n")
+            tmp_output = args.output_file.with_suffix(args.output_file.suffix + ".tmp")
+            tmp_output.write_text(rendered_output + "\n")
+            tmp_output.replace(args.output_file)
         except OSError as exc:
             print(f"nightly-report: failed to write --output-file: {exc}", file=sys.stderr)
             return 2
 
-    print(rendered_output)
+    if not args.no_stdout:
+        print(rendered_output)
 
     if any(r.state == "critical" for r in results):
         return 1

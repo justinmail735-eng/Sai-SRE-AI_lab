@@ -359,6 +359,20 @@ class NightlyReportTextTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("failed to write --output-file", result.stderr)
 
+    def test_no_stdout_requires_output_file(self):
+        result = run_report(healthy_payload(), "--no-stdout")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--no-stdout requires --output-file", result.stderr)
+
+    def test_no_stdout_suppresses_stdout_and_writes_file(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out_path = Path(tmp_dir) / "nightly" / "report.txt"
+            result = run_report(healthy_payload(), "--output-file", str(out_path), "--no-stdout")
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout.strip(), "")
+            self.assertTrue(out_path.exists())
+            self.assertIn("Nightly SLO Report", out_path.read_text())
+
 
 class NightlyReportJsonTests(unittest.TestCase):
     def test_json_output_is_valid(self):
