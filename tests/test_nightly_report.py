@@ -421,6 +421,22 @@ class NightlyReportJsonTests(unittest.TestCase):
         self.assertEqual(data["alerts"][0]["state"], "critical")
 
 
+class NightlyReportCsvTests(unittest.TestCase):
+    def test_csv_output_has_header_and_rows(self):
+        result = run_report(healthy_payload(), "--output", "csv")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("service,owner,target,state,window,window_minutes,availability,burn_rate,budget_requests_remaining", result.stdout)
+        self.assertIn("payments-api", result.stdout)
+
+    def test_csv_summary_only_includes_alerts(self):
+        result = run_report(triage_payload(), "--output", "csv", "--summary-only")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("service,state,owner,worst_window,worst_burn_rate", result.stdout)
+        self.assertIn("zeta-critical", result.stdout)
+        self.assertIn("alpha-warning", result.stdout)
+        self.assertNotIn("beta-pass", result.stdout)
+
+
 class NightlyReportMarkdownTests(unittest.TestCase):
     def test_markdown_output_has_h1_header(self):
         result = run_report(healthy_payload(), "--output", "markdown")

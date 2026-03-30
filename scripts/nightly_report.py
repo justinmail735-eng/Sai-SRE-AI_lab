@@ -14,7 +14,9 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import csv
 import datetime
+import io
 import json
 import math
 import re
@@ -160,6 +162,64 @@ def _render_markdown(
     return "\n".join(lines)
 
 
+def _render_csv(
+    results: List[ServiceResult],
+    generated_at: datetime.datetime,
+    summary_only: bool = False,
+) -> str:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    if summary_only:
+        writer.writerow(["generated_at", generated_at.isoformat()])
+        writer.writerow([])
+        writer.writerow(["service", "state", "owner", "worst_window", "worst_burn_rate"])
+        for svc in results:
+            if svc.state not in ("warning", "critical"):
+                continue
+            worst = _worst_window(svc)
+            writer.writerow(
+                [
+                    svc.name,
+                    svc.state,
+                    svc.owner or "",
+                    worst.label if worst else "",
+                    worst.burn_rate if worst else "",
+                ]
+            )
+    else:
+        writer.writerow(
+            [
+                "service",
+                "owner",
+                "target",
+                "state",
+                "window",
+                "window_minutes",
+                "availability",
+                "burn_rate",
+                "budget_requests_remaining",
+            ]
+        )
+        for svc in results:
+            for w in svc.windows:
+                writer.writerow(
+                    [
+                        svc.name,
+                        svc.owner or "",
+                        f"{svc.target:.6f}",
+                        svc.state,
+                        w.label,
+                        w.minutes,
+                        f"{w.availability:.6f}",
+                        w.burn_rate,
+                        w.budget_requests_remaining,
+                    ]
+                )
+
+    return buffer.getvalue().rstrip("\n")
+
+
 def _render_json(
     results: List[ServiceResult],
     generated_at: datetime.datetime,
@@ -210,9 +270,9 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        choices=("text", "json", "markdown"),
+        choices=("text", "json", "markdown", "csv"),
         default="text",
-        help="output format: text (default), json, or markdown",
+        help="output format: text (default), json, markdown, or csv",
     )
     parser.add_argument(
         "--fail-on-warning",
@@ -395,6 +455,8 @@ def main() -> int:
         rendered_output = _render_json(results, generated_at, summary_only=args.summary_only)
     elif args.output == "markdown":
         rendered_output = _render_markdown(results, generated_at, summary_only=args.summary_only)
+    elif args.output == "csv":
+        rendered_output = _render_csv(results, generated_at, summary_only=args.summary_only)
     else:
         rendered_output = _render_text(results, generated_at, summary_only=args.summary_only)
 

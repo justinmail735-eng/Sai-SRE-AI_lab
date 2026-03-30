@@ -56,6 +56,7 @@ Useful gates for nightly automation:
 - `--sort` to order output by `severity` (default triage order) or `name`
 - `--limit` to keep only the top N services after filtering/sorting (useful for pager digests)
 - `--summary-only` to emit a compact summary + alert list without full per-service detail
+- `--output csv` to emit machine-friendly flat rows for spreadsheets/BI tooling (`--summary-only` outputs alert rows)
 - `--min-burn-rate` to include only services whose worst burn window meets/exceeds a threshold (for triaging the hottest issues first)
 - `--output-file` to persist rendered report output to disk while still printing to stdout
 - `--no-stdout` to suppress terminal output when writing reports directly to file/sink (requires `--output-file`)
