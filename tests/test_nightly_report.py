@@ -373,6 +373,16 @@ class NightlyReportTextTests(unittest.TestCase):
             self.assertTrue(out_path.exists())
             self.assertIn("Nightly SLO Report", out_path.read_text())
 
+    def test_generated_at_overrides_text_header_timestamp(self):
+        result = run_report(healthy_payload(), "--generated-at", "2026-03-16T06:01:00Z")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("Nightly SLO Report — 2026-03-16 06:01:00 UTC", result.stdout)
+
+    def test_generated_at_invalid_timestamp_exits_two(self):
+        result = run_report(healthy_payload(), "--generated-at", "not-a-timestamp")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--generated-at must be ISO-8601", result.stderr)
+
 
 class NightlyReportJsonTests(unittest.TestCase):
     def test_json_output_is_valid(self):
@@ -419,6 +429,18 @@ class NightlyReportJsonTests(unittest.TestCase):
         self.assertIn("alerts", data)
         self.assertNotIn("services", data)
         self.assertEqual(data["alerts"][0]["state"], "critical")
+
+    def test_json_generated_at_uses_override_timestamp(self):
+        result = run_report(
+            healthy_payload(),
+            "--output",
+            "json",
+            "--generated-at",
+            "2026-03-16T06:01:00Z",
+        )
+        self.assertEqual(result.returncode, 0)
+        data = json.loads(result.stdout)
+        self.assertEqual(data["generated_at"], "2026-03-16T06:01:00+00:00")
 
 
 class NightlyReportCsvTests(unittest.TestCase):

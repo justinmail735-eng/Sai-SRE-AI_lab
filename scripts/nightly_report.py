@@ -343,6 +343,11 @@ def main() -> int:
         action="store_true",
         help="suppress stdout output (requires --output-file)",
     )
+    parser.add_argument(
+        "--generated-at",
+        default=None,
+        help="optional ISO-8601 UTC timestamp to stamp the report (for deterministic replays/backfills)",
+    )
     args = parser.parse_args()
 
     if args.no_stdout and args.output_file is None:
@@ -449,7 +454,25 @@ def main() -> int:
             print("nightly-report: --limit excluded all services", file=sys.stderr)
             return 2
 
-    generated_at = datetime.datetime.utcnow()
+    if args.generated_at:
+        normalized = args.generated_at.strip()
+        if normalized.endswith("Z"):
+            normalized = normalized[:-1] + "+00:00"
+        try:
+            parsed_generated_at = datetime.datetime.fromisoformat(normalized)
+        except ValueError:
+            print(
+                "nightly-report: --generated-at must be ISO-8601 (example: 2026-03-16T06:01:00Z)",
+                file=sys.stderr,
+            )
+            return 2
+
+        if parsed_generated_at.tzinfo is None:
+            generated_at = parsed_generated_at.replace(tzinfo=datetime.timezone.utc)
+        else:
+            generated_at = parsed_generated_at.astimezone(datetime.timezone.utc)
+    else:
+        generated_at = datetime.datetime.now(datetime.timezone.utc)
 
     if args.output == "json":
         rendered_output = _render_json(results, generated_at, summary_only=args.summary_only)
