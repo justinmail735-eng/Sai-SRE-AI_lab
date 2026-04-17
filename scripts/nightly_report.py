@@ -38,6 +38,19 @@ _STATE_ICON = {
 }
 
 
+def _build_owner_summary(results: List[ServiceResult]) -> dict[str, dict[str, int]]:
+    summary: dict[str, dict[str, int]] = {}
+    for svc in results:
+        owner = (svc.owner or "unknown").strip() or "unknown"
+        owner_bucket = summary.setdefault(
+            owner,
+            {"total": 0, "critical": 0, "warning": 0, "insufficient-data": 0, "pass": 0},
+        )
+        owner_bucket["total"] += 1
+        owner_bucket[svc.state] = owner_bucket.get(svc.state, 0) + 1
+    return summary
+
+
 def _worst_window(service: ServiceResult) -> WindowResult | None:
     """Return the window with the highest-severity state, breaking ties by burn rate."""
     priority = {"critical": 0, "warning": 1, "insufficient-data": 2, "pass": 3}
@@ -64,6 +77,7 @@ def _render_text(
     results: List[ServiceResult],
     generated_at: datetime.datetime,
     summary_only: bool = False,
+    owner_summary: bool = False,
 ) -> str:
     ts = generated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
     lines: list[str] = [
@@ -93,6 +107,17 @@ def _render_text(
     summary_parts = [f"{v} {k}" for k, v in sorted(counts.items())]
     lines.append(f"SUMMARY: {len(results)} service(s) — {', '.join(summary_parts)}")
 
+    if owner_summary:
+        owner_counts = _build_owner_summary(results)
+        lines += ["", "OWNER SUMMARY:"]
+        for owner in sorted(owner_counts):
+            counts = owner_counts[owner]
+            lines.append(
+                "  "
+                f"- {owner}: total={counts['total']}, critical={counts['critical']}, "
+                f"warning={counts['warning']}, insufficient-data={counts['insufficient-data']}, pass={counts['pass']}"
+            )
+
     alerts = [r for r in results if r.state in ("critical", "warning")]
     if alerts:
         lines += ["", "ALERTS:"]
@@ -111,6 +136,7 @@ def _render_markdown(
     results: List[ServiceResult],
     generated_at: datetime.datetime,
     summary_only: bool = False,
+    owner_summary: bool = False,
 ) -> str:
     ts = generated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
     lines: list[str] = [
@@ -145,6 +171,21 @@ def _render_markdown(
     lines += ["", "## Summary", ""]
     for state, count in sorted(counts.items()):
         lines.append(f"- **{state}**: {count}")
+
+    if owner_summary:
+        owner_counts = _build_owner_summary(results)
+        lines += ["", "## Owner Summary", ""]
+        lines += [
+            "| Owner | Total | Critical | Warning | Insufficient Data | Pass |",
+            "|-------|-------|----------|---------|-------------------|------|",
+        ]
+        for owner in sorted(owner_counts):
+            counts = owner_counts[owner]
+            safe_owner = owner.replace("|", "\\|")
+            lines.append(
+                f"| {safe_owner} | {counts['total']} | {counts['critical']} | {counts['warning']} | "
+                f"{counts['insufficient-data']} | {counts['pass']} |"
+            )
 
     alerts = [r for r in results if r.state in ("critical", "warning")]
     if alerts:
@@ -224,6 +265,7 @@ def _render_json(
     results: List[ServiceResult],
     generated_at: datetime.datetime,
     summary_only: bool = False,
+    owner_summary: bool = False,
 ) -> str:
     counts: dict[str, int] = {}
     for r in results:
@@ -232,6 +274,8 @@ def _render_json(
         "generated_at": generated_at.isoformat(),
         "summary": counts,
     }
+    if owner_summary:
+        payload["owner_summary"] = _build_owner_summary(results)
 
     if summary_only:
         payload["alerts"] = [
@@ -320,6 +364,11 @@ def main() -> int:
         "--summary-only",
         action="store_true",
         help="emit compact output with summary (+ alerts) and omit per-service detail",
+    )
+    parser.add_argument(
+        "--owner-summary",
+        action="store_true",
+        help="include owner-level state totals in report output (text/markdown/json)",
     )
     parser.add_argument(
         "--alerts-only",
@@ -475,13 +524,28 @@ def main() -> int:
         generated_at = datetime.datetime.now(datetime.timezone.utc)
 
     if args.output == "json":
-        rendered_output = _render_json(results, generated_at, summary_only=args.summary_only)
+        rendered_output = _render_json(
+            results,
+            generated_at,
+            summary_only=args.summary_only,
+            owner_summary=args.owner_summary,
+        )
     elif args.output == "markdown":
-        rendered_output = _render_markdown(results, generated_at, summary_only=args.summary_only)
+        rendered_output = _render_markdown(
+            results,
+            generated_at,
+            summary_only=args.summary_only,
+            owner_summary=args.owner_summary,
+        )
     elif args.output == "csv":
         rendered_output = _render_csv(results, generated_at, summary_only=args.summary_only)
     else:
-        rendered_output = _render_text(results, generated_at, summary_only=args.summary_only)
+        rendered_output = _render_text(
+            results,
+            generated_at,
+            summary_only=args.summary_only,
+            owner_summary=args.owner_summary,
+        )
 
     if args.output_file is not None:
         try:

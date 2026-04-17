@@ -383,6 +383,13 @@ class NightlyReportTextTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("--generated-at must be ISO-8601", result.stderr)
 
+    def test_owner_summary_text_includes_owner_rollup(self):
+        result = run_report(owner_filter_payload(), "--owner-summary")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("OWNER SUMMARY:", result.stdout)
+        self.assertIn("platform@example.com", result.stdout)
+        self.assertIn("security@example.com", result.stdout)
+
 
 class NightlyReportJsonTests(unittest.TestCase):
     def test_json_output_is_valid(self):
@@ -442,6 +449,13 @@ class NightlyReportJsonTests(unittest.TestCase):
         data = json.loads(result.stdout)
         self.assertEqual(data["generated_at"], "2026-03-16T06:01:00+00:00")
 
+    def test_json_owner_summary_includes_owner_totals(self):
+        result = run_report(owner_filter_payload(), "--output", "json", "--owner-summary")
+        self.assertEqual(result.returncode, 0)
+        data = json.loads(result.stdout)
+        self.assertIn("owner_summary", data)
+        self.assertEqual(data["owner_summary"]["platform@example.com"]["total"], 1)
+
 
 class NightlyReportCsvTests(unittest.TestCase):
     def test_csv_output_has_header_and_rows(self):
@@ -494,6 +508,13 @@ class NightlyReportMarkdownTests(unittest.TestCase):
         self.assertIn("## Summary", result.stdout)
         self.assertNotIn("## Service Status", result.stdout)
         self.assertNotIn("| Service | Owner |", result.stdout)
+
+    def test_markdown_owner_summary_adds_owner_table(self):
+        result = run_report(owner_filter_payload(), "--output", "markdown", "--owner-summary")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("## Owner Summary", result.stdout)
+        self.assertIn("| Owner | Total |", result.stdout)
+        self.assertIn("platform@example.com", result.stdout)
 
 
 if __name__ == "__main__":
