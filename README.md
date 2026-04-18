@@ -59,6 +59,7 @@ Useful gates for nightly automation:
 - `--owner-summary` to include owner-level state rollups in text/markdown/json output (useful for on-call/team accountability)
 - `--output csv` to emit machine-friendly flat rows for spreadsheets/BI tooling (`--summary-only` outputs alert rows)
 - `--min-burn-rate` to include only services whose worst burn window meets/exceeds a threshold (for triaging the hottest issues first)
+- `--max-alerts` to cap alert entries in report alert sections / summary outputs (useful for pager-sized digests)
 - `--output-file` to persist rendered report output to disk while still printing to stdout
 - `--no-stdout` to suppress terminal output when writing reports directly to file/sink (requires `--output-file`)
 - `policy.required_windows` (JSON field) to enforce a standard set of burn windows across every service (for example `["5m", "60m"]`)

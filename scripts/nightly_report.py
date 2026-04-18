@@ -78,6 +78,7 @@ def _render_text(
     generated_at: datetime.datetime,
     summary_only: bool = False,
     owner_summary: bool = False,
+    max_alerts: int | None = None,
 ) -> str:
     ts = generated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
     lines: list[str] = [
@@ -119,6 +120,10 @@ def _render_text(
             )
 
     alerts = [r for r in results if r.state in ("critical", "warning")]
+    truncated_alerts = False
+    if max_alerts is not None and len(alerts) > max_alerts:
+        alerts = alerts[:max_alerts]
+        truncated_alerts = True
     if alerts:
         lines += ["", "ALERTS:"]
         for svc in alerts:
@@ -128,6 +133,8 @@ def _render_text(
                 worst_desc = f" — worst window: {worst.label} ({_burn_str(worst.burn_rate)} burn)"
             tag = _STATE_ICON.get(svc.state, "?")
             lines.append(f"  [{tag}] {svc.name}{worst_desc}")
+        if truncated_alerts:
+            lines.append(f"  ... truncated to top {max_alerts} alert(s)")
 
     return "\n".join(lines)
 
@@ -137,6 +144,7 @@ def _render_markdown(
     generated_at: datetime.datetime,
     summary_only: bool = False,
     owner_summary: bool = False,
+    max_alerts: int | None = None,
 ) -> str:
     ts = generated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
     lines: list[str] = [
@@ -188,6 +196,10 @@ def _render_markdown(
             )
 
     alerts = [r for r in results if r.state in ("critical", "warning")]
+    truncated_alerts = False
+    if max_alerts is not None and len(alerts) > max_alerts:
+        alerts = alerts[:max_alerts]
+        truncated_alerts = True
     if alerts:
         lines += ["", "## Alerts", ""]
         for svc in alerts:
@@ -199,6 +211,9 @@ def _render_markdown(
                 )
             else:
                 lines.append(f"- **{svc.state.upper()}** `{svc.name}`")
+        if truncated_alerts:
+            lines.append("")
+            lines.append(f"_Truncated to top {max_alerts} alert(s)._")
 
     return "\n".join(lines)
 
@@ -207,6 +222,7 @@ def _render_csv(
     results: List[ServiceResult],
     generated_at: datetime.datetime,
     summary_only: bool = False,
+    max_alerts: int | None = None,
 ) -> str:
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -215,9 +231,10 @@ def _render_csv(
         writer.writerow(["generated_at", generated_at.isoformat()])
         writer.writerow([])
         writer.writerow(["service", "state", "owner", "worst_window", "worst_burn_rate"])
-        for svc in results:
-            if svc.state not in ("warning", "critical"):
-                continue
+        alerts = [svc for svc in results if svc.state in ("warning", "critical")]
+        if max_alerts is not None:
+            alerts = alerts[:max_alerts]
+        for svc in alerts:
             worst = _worst_window(svc)
             writer.writerow(
                 [
@@ -266,6 +283,7 @@ def _render_json(
     generated_at: datetime.datetime,
     summary_only: bool = False,
     owner_summary: bool = False,
+    max_alerts: int | None = None,
 ) -> str:
     counts: dict[str, int] = {}
     for r in results:
@@ -278,7 +296,7 @@ def _render_json(
         payload["owner_summary"] = _build_owner_summary(results)
 
     if summary_only:
-        payload["alerts"] = [
+        alerts = [
             {
                 "name": svc.name,
                 "state": svc.state,
@@ -296,6 +314,9 @@ def _render_json(
             for svc in results
             if svc.state in ("critical", "warning")
         ]
+        if max_alerts is not None:
+            alerts = alerts[:max_alerts]
+        payload["alerts"] = alerts
     else:
         payload["services"] = [asdict(r) for r in results]
 
@@ -380,6 +401,12 @@ def main() -> int:
         type=float,
         default=None,
         help="optional filter to include only services whose worst-window burn rate is >= this value",
+    )
+    parser.add_argument(
+        "--max-alerts",
+        type=int,
+        default=None,
+        help="optional cap on alert entries rendered in alerts sections/summary outputs",
     )
     parser.add_argument(
         "--output-file",
@@ -489,6 +516,10 @@ def main() -> int:
             return 2
         results = filtered_by_burn
 
+    if args.max_alerts is not None and args.max_alerts < 1:
+        print("nightly-report: --max-alerts must be >= 1", file=sys.stderr)
+        return 2
+
     if args.sort == "name":
         results = sorted(results, key=lambda svc: svc.name)
     else:
@@ -529,6 +560,7 @@ def main() -> int:
             generated_at,
             summary_only=args.summary_only,
             owner_summary=args.owner_summary,
+            max_alerts=args.max_alerts,
         )
     elif args.output == "markdown":
         rendered_output = _render_markdown(
@@ -536,15 +568,22 @@ def main() -> int:
             generated_at,
             summary_only=args.summary_only,
             owner_summary=args.owner_summary,
+            max_alerts=args.max_alerts,
         )
     elif args.output == "csv":
-        rendered_output = _render_csv(results, generated_at, summary_only=args.summary_only)
+        rendered_output = _render_csv(
+            results,
+            generated_at,
+            summary_only=args.summary_only,
+            max_alerts=args.max_alerts,
+        )
     else:
         rendered_output = _render_text(
             results,
             generated_at,
             summary_only=args.summary_only,
             owner_summary=args.owner_summary,
+            max_alerts=args.max_alerts,
         )
 
     if args.output_file is not None:

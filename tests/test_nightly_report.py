@@ -340,6 +340,18 @@ class NightlyReportTextTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("matched no services", result.stderr)
 
+    def test_max_alerts_must_be_positive(self):
+        result = run_report(healthy_payload(), "--max-alerts", "0")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--max-alerts must be >= 1", result.stderr)
+
+    def test_max_alerts_limits_text_alert_section(self):
+        result = run_report(triage_payload(), "--max-alerts", "1")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("zeta-critical", result.stdout)
+        self.assertNotIn("alpha-warning —", result.stdout)
+        self.assertIn("truncated to top 1 alert(s)", result.stdout)
+
     def test_output_file_writes_report_and_keeps_stdout(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             out_path = Path(tmp_dir) / "nightly" / "report.txt"
@@ -456,6 +468,13 @@ class NightlyReportJsonTests(unittest.TestCase):
         self.assertIn("owner_summary", data)
         self.assertEqual(data["owner_summary"]["platform@example.com"]["total"], 1)
 
+    def test_json_summary_only_honors_max_alerts(self):
+        result = run_report(triage_payload(), "--output", "json", "--summary-only", "--max-alerts", "1")
+        self.assertEqual(result.returncode, 1)
+        data = json.loads(result.stdout)
+        self.assertEqual(len(data["alerts"]), 1)
+        self.assertEqual(data["alerts"][0]["name"], "zeta-critical")
+
 
 class NightlyReportCsvTests(unittest.TestCase):
     def test_csv_output_has_header_and_rows(self):
@@ -471,6 +490,12 @@ class NightlyReportCsvTests(unittest.TestCase):
         self.assertIn("zeta-critical", result.stdout)
         self.assertIn("alpha-warning", result.stdout)
         self.assertNotIn("beta-pass", result.stdout)
+
+    def test_csv_summary_only_honors_max_alerts(self):
+        result = run_report(triage_payload(), "--output", "csv", "--summary-only", "--max-alerts", "1")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("zeta-critical", result.stdout)
+        self.assertNotIn("alpha-warning", result.stdout)
 
 
 class NightlyReportMarkdownTests(unittest.TestCase):
@@ -515,6 +540,13 @@ class NightlyReportMarkdownTests(unittest.TestCase):
         self.assertIn("## Owner Summary", result.stdout)
         self.assertIn("| Owner | Total |", result.stdout)
         self.assertIn("platform@example.com", result.stdout)
+
+    def test_markdown_alerts_honor_max_alerts(self):
+        result = run_report(triage_payload(), "--output", "markdown", "--max-alerts", "1")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("`zeta-critical`", result.stdout)
+        self.assertNotIn("`alpha-warning` —", result.stdout)
+        self.assertIn("Truncated to top 1 alert(s)", result.stdout)
 
 
 if __name__ == "__main__":
