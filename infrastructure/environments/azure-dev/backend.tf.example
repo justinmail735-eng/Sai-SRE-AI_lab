@@ -1,0 +1,9 @@
+# Copy to backend.tf after creating the state storage account and container.
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "replace-with-terraform-state-rg"
+    storage_account_name = "replacewithstateaccount"
+    container_name       = "tfstate"
+    key                  = "azure-dev.terraform.tfstate"
+  }
+}

@@ -1,4 +1,4 @@
-.PHONY: check test observability-generate k8s-validate k8s-up k8s-verify k8s-down demo-up demo-verify demo-traffic demo-fault-errors demo-fault-latency demo-recover demo-down
+.PHONY: check test observability-generate terraform-fmt terraform-validate terraform-test k8s-validate k8s-up k8s-verify k8s-down demo-up demo-verify demo-traffic demo-fault-errors demo-fault-latency demo-recover demo-down
 
 check:
 	python3 scripts/reliability_check.py
@@ -8,6 +8,15 @@ test:
 
 observability-generate:
 	python3 agents/observability_agent.py --spec reliability/services/checkout-api.json --output-dir observability/generated/checkout-api
+
+terraform-fmt:
+	terraform fmt -recursive infrastructure
+
+terraform-validate:
+	python3 scripts/terraform_validate.py --skip-tests
+
+terraform-test:
+	python3 scripts/terraform_validate.py
 
 k8s-validate:
 	helm lint platform/helm/checkout-api

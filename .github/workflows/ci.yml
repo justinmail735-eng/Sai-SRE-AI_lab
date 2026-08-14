@@ -42,6 +42,17 @@ jobs:
         run: |
           python3 scripts/reliability_check.py
 
+  multi-cloud-terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - uses: terraform-linters/setup-tflint@v5
+      - name: Validate and test AWS and Azure foundations
+        run: python3 scripts/terraform_validate.py
+
   live-observability-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10

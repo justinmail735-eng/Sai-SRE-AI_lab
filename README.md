@@ -166,3 +166,18 @@ Runtime verification proves replica availability, node spreading, non-root
 execution, seccomp, capability removal, read-only filesystems, disabled token
 mounting, probes, resource controls, disruption protection, network policy, and
 in-cluster service connectivity.
+
+## Multi-cloud Terraform
+
+Reusable foundations now express the same reliability intent for private Amazon
+EKS and Azure AKS platforms while keeping their native security controls visible.
+
+```bash
+make terraform-test
+```
+
+This performs formatting checks, provider-schema validation, TFLint, and mocked
+plan tests across both modules. No cloud credentials are required and no
+resources are created. See [the infrastructure guide](infrastructure/README.md)
+for the control mapping, cost boundary, remote-state setup, and opt-in deployment
+workflow.

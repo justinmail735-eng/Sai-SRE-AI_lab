@@ -1,0 +1,10 @@
+# Copy to backend.tf after creating the state bucket and lock table.
+terraform {
+  backend "s3" {
+    bucket         = "replace-with-sentinelsre-state-bucket"
+    key            = "aws-dev/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "replace-with-sentinelsre-state-locks"
+  }
+}
