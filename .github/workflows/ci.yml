@@ -2,6 +2,16 @@ name: ci
 on:
   push:
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reliability-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   lint-docs:
     runs-on: ubuntu-latest
@@ -23,3 +33,11 @@ jobs:
       - name: Run SLO evaluator tests
         run: |
           python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+  continuous-reliability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify generated observability and current SLO policy
+        run: |
+          python3 scripts/reliability_check.py

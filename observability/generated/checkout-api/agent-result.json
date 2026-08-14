@@ -1,0 +1,36 @@
+{
+  "agent": "ObservabilityEngineerAgent",
+  "approval_required": false,
+  "artifacts": [
+    "observability/generated/checkout-api/dashboard.json",
+    "observability/generated/checkout-api/prometheus-rules.yaml"
+  ],
+  "changes_applied": true,
+  "evidence": [
+    "service owner: commerce-sre@sai-lab.local",
+    "cloud: multi-cloud",
+    "availability target: 0.999",
+    "four required golden-signal queries supplied"
+  ],
+  "mode": "generate",
+  "objective": "Create golden-signal observability for checkout-api",
+  "risk": "low",
+  "successful": true,
+  "validations": [
+    {
+      "details": "golden-signal panels and immutable dashboard",
+      "name": "grafana-dashboard",
+      "passed": true
+    },
+    {
+      "details": "burn-rate, latency, and runbook coverage",
+      "name": "prometheus-rules",
+      "passed": true
+    },
+    {
+      "details": "agent produces reviewable files only; no infrastructure or production mutation",
+      "name": "approval-policy",
+      "passed": true
+    }
+  ]
+}

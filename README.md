@@ -103,3 +103,30 @@ Useful gates for nightly automation:
 
 ## Current Status
 See `docs/roadmap/SPRINT-7D.md` and `logs/daily/2026-02-23.md`.
+
+## Governed Engineering Agents
+
+The first working engineering agent is the **Observability Engineer Agent**. It
+converts a versioned service specification into a Grafana golden-signals
+dashboard, Prometheus SLO alerts, and an auditable validation result. It drafts
+and validates reviewable files; it does not mutate cloud infrastructure.
+
+Generate the checkout service observability pack:
+
+```bash
+python3 agents/observability_agent.py \
+  --spec reliability/services/checkout-api.json \
+  --output-dir observability/generated/checkout-api
+```
+
+Run the continuous reliability gate:
+
+```bash
+python3 scripts/reliability_check.py
+```
+
+The gate verifies generated-artifact drift and strict SLO policy. GitHub Actions
+runs it for pushes, pull requests, manual dispatches, and every six hours. The
+scheduled check currently uses deterministic telemetry fixtures; live AWS,
+Azure, Prometheus, or OpenTelemetry coverage will only be claimed after those
+connections are implemented and tested.

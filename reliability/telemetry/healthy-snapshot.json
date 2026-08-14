@@ -1,0 +1,33 @@
+{
+  "policy": {
+    "min_requests": 100,
+    "warning_burn_rate": 2.0,
+    "critical_burn_rate": 14.0,
+    "required_windows": ["5m", "60m"],
+    "window_minutes": {
+      "5m": 5,
+      "60m": 60
+    }
+  },
+  "services": [
+    {
+      "name": "checkout-api",
+      "owner": "commerce-sre@sai-lab.local",
+      "target_availability": 0.999,
+      "windows": [
+        {
+          "label": "5m",
+          "minutes": 5,
+          "total_requests": 20000,
+          "error_requests": 2
+        },
+        {
+          "label": "60m",
+          "minutes": 60,
+          "total_requests": 240000,
+          "error_requests": 24
+        }
+      ]
+    }
+  ]
+}
