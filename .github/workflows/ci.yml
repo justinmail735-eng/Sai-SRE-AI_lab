@@ -62,3 +62,43 @@ jobs:
         if: always()
         run: |
           docker compose -f observability/local/docker-compose.yml down --volumes --remove-orphans
+
+  kubernetes-manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Lint and validate Helm safeguards
+        run: |
+          helm lint platform/helm/checkout-api
+          python3 scripts/k8s_validate.py
+
+  kubernetes-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: sentinelsre
+          config: platform/kind/cluster.yaml
+      - name: Build and load checkout image
+        run: |
+          docker build -t local-checkout-api:latest applications/checkout-api
+          kind load docker-image local-checkout-api:latest --name sentinelsre
+      - name: Install hardened Helm release
+        run: |
+          kubectl create namespace sentinelsre
+          helm upgrade --install checkout platform/helm/checkout-api \
+            --namespace sentinelsre \
+            --values platform/helm/checkout-api/values-kind.yaml \
+            --wait --timeout 3m
+      - name: Verify live Kubernetes safeguards and networking
+        run: |
+          python3 scripts/k8s_runtime_check.py
+      - name: Preserve cluster diagnostics
+        if: failure()
+        run: |
+          kubectl get all,networkpolicy,poddisruptionbudget -n sentinelsre -o wide
+          kubectl get events -n sentinelsre --sort-by=.lastTimestamp

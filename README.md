@@ -149,3 +149,20 @@ make demo-down
 
 The local fault endpoint, sample credentials, and synthetic traffic generator
 are demo controls and are not intended for production deployment.
+
+## Kubernetes Platform
+
+The checkout workload also ships as a hardened Helm chart and is continuously
+tested both as rendered manifests and inside a real multi-node Kind cluster.
+
+```bash
+make k8s-validate
+make k8s-up
+make k8s-verify
+make k8s-down
+```
+
+Runtime verification proves replica availability, node spreading, non-root
+execution, seccomp, capability removal, read-only filesystems, disabled token
+mounting, probes, resource controls, disruption protection, network policy, and
+in-cluster service connectivity.

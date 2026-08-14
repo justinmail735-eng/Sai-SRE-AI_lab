@@ -1,0 +1,7 @@
+SentinelSRE checkout-api installed.
+
+Verify rollout:
+  kubectl rollout status deployment/{{ include "checkout-api.fullname" . }} -n {{ .Release.Namespace }}
+
+Port-forward locally:
+  kubectl port-forward service/{{ include "checkout-api.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}

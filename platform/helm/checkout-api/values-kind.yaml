@@ -1,0 +1,12 @@
+replicaCount: 2
+
+image:
+  repository: local-checkout-api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+autoscaling:
+  enabled: false
+
+podDisruptionBudget:
+  enabled: true
