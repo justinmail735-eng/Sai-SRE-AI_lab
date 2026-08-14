@@ -4,6 +4,7 @@
 1. Ship 6–8 serious SRE/AIOps modules.
 2. Publish portfolio-ready docs + runbooks.
 3. Produce blog-ready engineering narratives tied to shipped work.
+4. Demonstrate the same incident workflow across AWS and Azure fixtures.
 
 ## Day-by-Day
 
@@ -36,6 +37,13 @@
 - Local-first triage CLI for incident summaries.
 - Correlate logs/metrics/events snapshots.
 - Recommend runbook actions with confidence labels.
+
+### Multi-Cloud Extension
+- Define a provider-neutral service, signal, change, and evidence schema.
+- Implement deterministic AWS CloudWatch/CloudTrail fixtures and adapter.
+- Implement deterministic Azure Monitor/Activity Log fixtures and adapter.
+- Run one equivalent failure scenario through both providers.
+- Keep live credentials optional and cloud actions read-only by default.
 
 ### Day 7 — Portfolio + Blog Finalization
 - Recruiter-facing summary deck in markdown.

@@ -1,6 +1,37 @@
 # Sai SRE AI Lab
 
-A senior-level SRE/DevOps/AIOps portfolio built through daily execution.
+A multi-cloud SRE and AIOps control plane that detects reliability risk,
+triages incidents, recommends safe runbook actions, and produces an auditable
+incident record across AWS and Azure.
+
+## What It Does
+
+Sai SRE AI Lab turns cloud telemetry and deployment events into an evidence-based
+incident workflow:
+
+1. Collect normalized signals from AWS CloudWatch and Azure Monitor adapters.
+2. Evaluate SLOs, error budgets, and multi-window burn rates consistently.
+3. Correlate alerts, deployments, logs, metrics, and dependency failures.
+4. Rank likely causes with evidence and explicit confidence levels.
+5. Route responders to provider-specific or provider-neutral runbooks.
+6. Record decisions and generate a blameless postmortem after resolution.
+
+The project is local-first: synthetic fixtures make the complete workflow
+reproducible without a paid cloud account. Real cloud access is added through
+optional, least-privilege provider adapters.
+
+## Multi-Cloud Scope
+
+| Capability | AWS | Azure | Normalized output |
+| --- | --- | --- | --- |
+| Metrics and alerts | CloudWatch | Azure Monitor | Reliability signal |
+| Logs | CloudWatch Logs | Log Analytics | Evidence event |
+| Deployments | CodeDeploy / CloudTrail | Azure Activity Log | Change event |
+| Service ownership | Resource tags | Resource tags | Service metadata |
+| Runbook execution (planned) | Systems Manager | Azure Automation | Audited action |
+
+Provider APIs stay behind adapters. SLO evaluation, incident correlation,
+triage policy, and postmortem generation operate on a shared internal schema.
 
 ## Mission
 Build production-style reliability systems, runbooks, and automation that demonstrate senior SRE judgment:
@@ -9,6 +40,7 @@ Build production-style reliability systems, runbooks, and automation that demons
 - Observability and alert quality
 - Platform reliability guardrails
 - AIOps-assisted triage workflows
+- Multi-cloud reliability patterns without hiding provider-specific behavior
 
 ## 7-Day Sprint (40-day output style)
 - Day 1: Foundation, architecture, roadmap, standards
