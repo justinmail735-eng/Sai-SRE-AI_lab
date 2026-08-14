@@ -33,7 +33,7 @@ export default function Home() {
   return (
     <main className="shell">
       <aside className="rail">
-        <div className="brand"><span className="brandMark">S</span><span>SAI / OPS</span></div>
+        <div className="brand"><span className="brandMark">S</span><span>SENTINEL / SRE</span></div>
         <nav>
           <a className="active" href="#">Command center</a>
           <a href="#">Incidents <span className="badge">1</span></a>

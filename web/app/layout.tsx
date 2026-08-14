@@ -17,14 +17,14 @@ export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const image = `${protocol}://${host}/og.png`;
+  const image = `${protocol}://${host}/sentinel-sre-og.png`;
 
   return {
-    title: "SAI Ops — Multi-cloud incident command",
+    title: "SentinelSRE — Multi-cloud reliability agents",
     description: "Evidence-based SRE incident detection, diagnosis, response, and learning across AWS and Azure.",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
-    openGraph: { title: "SAI Ops", description: "Multi-cloud incident command", images: [image] },
-    twitter: { card: "summary_large_image", title: "SAI Ops", description: "Multi-cloud incident command", images: [image] },
+    openGraph: { title: "SentinelSRE", description: "AI engineering agents for multi-cloud reliability", images: [image] },
+    twitter: { card: "summary_large_image", title: "SentinelSRE", description: "AI engineering agents for multi-cloud reliability", images: [image] },
   };
 }
 

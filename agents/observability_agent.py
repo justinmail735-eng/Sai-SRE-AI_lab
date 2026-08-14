@@ -113,7 +113,7 @@ def grafana_dashboard(data: dict[str, Any]) -> dict[str, Any]:
         "uid": f"sai-{metadata['name']}",
         "schemaVersion": 39,
         "editable": False,
-        "tags": ["sai-ops", metadata["cloud"], metadata["environment"]],
+        "tags": ["sentinel-sre", metadata["cloud"], metadata["environment"]],
         "templating": {
             "list": [
                 {

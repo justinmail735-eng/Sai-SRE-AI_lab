@@ -1,4 +1,4 @@
-# Sai SRE AI Lab
+# SentinelSRE
 
 A multi-cloud SRE and AIOps control plane that detects reliability risk,
 triages incidents, recommends safe runbook actions, and produces an auditable
@@ -6,7 +6,7 @@ incident record across AWS and Azure.
 
 ## What It Does
 
-Sai SRE AI Lab turns cloud telemetry and deployment events into an evidence-based
+SentinelSRE turns cloud telemetry and deployment events into an evidence-based
 incident workflow:
 
 1. Collect normalized signals from AWS CloudWatch and Azure Monitor adapters.
