@@ -130,3 +130,22 @@ runs it for pushes, pull requests, manual dispatches, and every six hours. The
 scheduled check currently uses deterministic telemetry fixtures; live AWS,
 Azure, Prometheus, or OpenTelemetry coverage will only be claimed after those
 connections are implemented and tested.
+
+## Live Reliability Lab
+
+SentinelSRE includes a running checkout workload and a complete local telemetry
+path through OpenTelemetry Collector, Prometheus, and Grafana. The
+agent-generated dashboard and alerts are provisioned directly into the live
+stack and verified in CI.
+
+```bash
+make demo-up
+make demo-verify
+make demo-traffic
+make demo-fault-errors
+make demo-recover
+make demo-down
+```
+
+The local fault endpoint, sample credentials, and synthetic traffic generator
+are demo controls and are not intended for production deployment.

@@ -41,3 +41,24 @@ jobs:
       - name: Verify generated observability and current SLO policy
         run: |
           python3 scripts/reliability_check.py
+
+  live-observability-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start instrumented reliability lab
+        run: |
+          docker compose -f observability/local/docker-compose.yml up --build -d
+      - name: Verify application-to-dashboard telemetry path
+        run: |
+          python3 scripts/live_stack_check.py
+      - name: Preserve service diagnostics
+        if: failure()
+        run: |
+          docker compose -f observability/local/docker-compose.yml ps
+          docker compose -f observability/local/docker-compose.yml logs --no-color --tail=200
+      - name: Stop reliability lab
+        if: always()
+        run: |
+          docker compose -f observability/local/docker-compose.yml down --volumes --remove-orphans

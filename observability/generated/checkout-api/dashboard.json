@@ -15,7 +15,7 @@
       "id": 1,
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{service=\"checkout-api\"}[5m]))",
+          "expr": "sum(rate(process_cpu_seconds_total{service=\"checkout-api\"}[5m]))",
           "refId": "A"
         }
       ],

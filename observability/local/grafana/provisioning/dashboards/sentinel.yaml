@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: SentinelSRE
+    orgId: 1
+    folder: SentinelSRE
+    type: file
+    disableDeletion: true
+    editable: false
+    options:
+      path: /var/lib/grafana/dashboards

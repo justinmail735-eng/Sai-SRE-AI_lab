@@ -1,0 +1,26 @@
+receivers:
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: checkout-api
+          scrape_interval: 5s
+          static_configs:
+            - targets: [checkout-api:8080]
+
+processors:
+  batch: {}
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:9464
+    resource_to_telemetry_conversion:
+      enabled: true
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    metrics:
+      receivers: [prometheus]
+      processors: [batch]
+      exporters: [prometheus, debug]
