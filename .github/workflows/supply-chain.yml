@@ -1,0 +1,80 @@
+name: supply-chain
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/sentinelsre/checkout-api
+
+jobs:
+  source-and-sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.74.0
+      - uses: anchore/sbom-action/download-syft@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
+      - name: Reject vulnerable dependencies, IaC risks, and secrets
+        run: trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --exit-code 1 .
+      - name: Generate CycloneDX software bill of materials
+        run: syft dir:. --source-name sentinelsre --source-version "${GITHUB_SHA}" -o cyclonedx-json=sentinelsre-sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinelsre-source-sbom
+          path: sentinelsre-sbom.cdx.json
+          if-no-files-found: error
+
+  container-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.74.0
+      - name: Build the exact release candidate
+        run: docker build --tag sentinelsre-checkout:${{ github.sha }} applications/checkout-api
+      - name: Reject high and critical container vulnerabilities
+        run: trivy image --severity HIGH,CRITICAL --exit-code 1 sentinelsre-checkout:${{ github.sha }}
+
+  publish-and-sign:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [source-and-sbom, container-scan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: applications/checkout-api
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.ref_name }}
+      - name: Keyless-sign the immutable image digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+      - name: Verify the signature identity before promotion
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          cosign verify "${IMAGE}@${DIGEST}" \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/supply-chain.yml@${GITHUB_REF}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com

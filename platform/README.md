@@ -35,3 +35,23 @@ make k8s-down
 The Kind values intentionally disable the HPA because Metrics Server is not a
 dependency of the minimal lab. The default chart keeps it enabled for managed
 cluster environments.
+
+## GitOps delivery
+
+`platform/gitops` defines an Argo CD project with repository/destination
+allowlists and an Application with automated pruning, drift self-healing,
+retries, and server-side apply. After Argo CD is installed, bootstrap it with:
+
+```bash
+kubectl apply -k platform/gitops
+```
+
+The production values pin the container by digest. The checked-in digest is a
+non-runnable promotion sentinel, so cloning the repository cannot accidentally
+deploy an unsigned development image. After a tagged release is scanned,
+published, signed, and verified, draft the reviewed GitOps change with:
+
+```bash
+python3 scripts/promote_image.py --digest sha256:<64-hex-characters> --write
+make gitops-validate
+```

@@ -53,6 +53,21 @@ jobs:
       - name: Validate and test AWS and Azure foundations
         run: python3 scripts/terraform_validate.py
 
+  gitops-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: yokawasa/action-setup-kube-tools@9e25a4277af127b60011c95b6ed2da7e3b3613b1 # v0.11.2
+        with:
+          setup-tools: |
+            kustomize
+            conftest
+          kustomize: 5.8.1
+          conftest: 0.69.0
+      - name: Render GitOps resources and enforce admission policy
+        run: python3 scripts/gitops_validate.py
+
   live-observability-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10

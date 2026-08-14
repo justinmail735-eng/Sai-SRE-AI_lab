@@ -181,3 +181,20 @@ plan tests across both modules. No cloud credentials are required and no
 resources are created. See [the infrastructure guide](infrastructure/README.md)
 for the control mapping, cost boundary, remote-state setup, and opt-in deployment
 workflow.
+
+## GitOps and software supply chain
+
+Argo CD declarations reconcile the Helm release with pruning and self-healing,
+within explicit source and destination boundaries. A separate security workflow
+scans source, IaC, secrets, dependencies, and the built image; emits a CycloneDX
+SBOM; keyless-signs tagged GHCR images; and verifies their GitHub OIDC identity.
+Conftest enforces the rendered workload contract and a fail-closed Kyverno policy
+defines the cluster-side signature admission rule.
+
+```bash
+make gitops-validate
+make security-check
+```
+
+See [the supply-chain control guide](security/README.md) for the trust boundary
+and [the platform guide](platform/README.md) for promotion and bootstrap.

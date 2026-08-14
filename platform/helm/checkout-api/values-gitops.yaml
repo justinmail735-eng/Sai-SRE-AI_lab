@@ -1,0 +1,9 @@
+image:
+  repository: ghcr.io/justinmail735-eng/sentinelsre/checkout-api
+  tag: main
+  # The promotion workflow replaces this with sha256:<digest> in a reviewed PR.
+  digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  pullPolicy: IfNotPresent
+
+podAnnotations:
+  sentinelsre.io/delivery: argocd

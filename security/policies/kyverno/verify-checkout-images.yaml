@@ -1,0 +1,34 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-sentinelsre-images
+  annotations:
+    policies.kyverno.io/title: Verify SentinelSRE images
+    policies.kyverno.io/category: Software Supply Chain Security
+spec:
+  validationFailureAction: Enforce
+  background: true
+  failurePolicy: Fail
+  webhookTimeoutSeconds: 15
+  rules:
+    - name: verify-checkout-keyless-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sentinelsre
+      verifyImages:
+        - imageReferences:
+            - ghcr.io/justinmail735-eng/sentinelsre/*
+          mutateDigest: true
+          verifyDigest: true
+          required: true
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: https://token.actions.githubusercontent.com
+                    subjectRegExp: https://github.com/justinmail735-eng/Sai-SRE-AI_lab/.github/workflows/supply-chain.yml@refs/tags/v.*
+                    rekor:
+                      url: https://rekor.sigstore.dev

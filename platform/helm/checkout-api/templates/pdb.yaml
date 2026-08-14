@@ -3,6 +3,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: {{ include "checkout-api.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "checkout-api.labels" . | nindent 4 }}
 spec:

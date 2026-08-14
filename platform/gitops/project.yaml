@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: sentinelsre
+  namespace: argocd
+spec:
+  description: Governed delivery boundary for SentinelSRE workloads
+  sourceRepos:
+    - https://github.com/justinmail735-eng/Sai-SRE-AI_lab.git
+  destinations:
+    - namespace: sentinelsre
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true
+  roles:
+    - name: platform-readonly
+      description: Read-only project access for responders
+      policies:
+        - p, proj:sentinelsre:platform-readonly, applications, get, sentinelsre/*, allow

@@ -3,6 +3,9 @@ replicaCount: 2
 image:
   repository: local-checkout-api
   tag: latest
+  # Production GitOps values set an immutable sha256 digest. When present it
+  # takes precedence over tag.
+  digest: ""
   pullPolicy: IfNotPresent
 
 serviceAccount:

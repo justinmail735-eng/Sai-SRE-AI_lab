@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: checkout
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: sentinelsre
+  source:
+    repoURL: https://github.com/justinmail735-eng/Sai-SRE-AI_lab.git
+    targetRevision: main
+    path: platform/helm/checkout-api
+    helm:
+      releaseName: checkout
+      valueFiles:
+        - values.yaml
+        - values-gitops.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sentinelsre
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
