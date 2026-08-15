@@ -16,6 +16,7 @@ AGENT = ROOT / "agents" / "observability_agent.py"
 SLO_CHECK = ROOT / "scripts" / "slo_check.py"
 GOVERNANCE_CHECK = ROOT / "scripts" / "governance_check.py"
 EVIDENCE_CHECK = ROOT / "scripts" / "evidence_check.py"
+WORKFLOW_HYGIENE_CHECK = ROOT / "scripts" / "workflow_hygiene_check.py"
 DEFAULT_SLO = ROOT / "reliability" / "telemetry" / "healthy-snapshot.json"
 
 
@@ -69,6 +70,7 @@ def run_checks(slo_input: Path) -> list[dict[str, object]]:
     )
     checks.append(check_command("agent-governance", [sys.executable, str(GOVERNANCE_CHECK)]))
     checks.append(check_command("drill-evidence", [sys.executable, str(EVIDENCE_CHECK)]))
+    checks.append(check_command("workflow-runtime-hygiene", [sys.executable, str(WORKFLOW_HYGIENE_CHECK)]))
     return checks
 
 
