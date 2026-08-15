@@ -1,37 +1,55 @@
 # SentinelSRE
 
-A multi-cloud SRE and AIOps control plane that detects reliability risk,
-triages incidents, recommends safe runbook actions, and produces an auditable
-incident record across AWS and Azure.
+A runnable enterprise SRE lab that combines live observability, hardened
+Kubernetes, provider-native AWS/Azure infrastructure, GitOps security, and
+human-governed incident agents.
+
+## Run the complete proof
+
+```bash
+make showcase
+```
+
+The showcase executes 11 capability gates, injects a local checkout failure,
+proves approval denials and governed recovery, deletes one Pod in the dedicated
+Kind cluster, verifies replacement and full readiness, and writes an evidence
+report. It does not apply cloud resources or touch production.
+
+Start with the [demo guide](docs/demo/DEMO-GUIDE.md),
+[architecture](docs/architecture/PLATFORM.md), or
+[completion matrix](docs/demo/COMPLETION-MATRIX.md).
 
 ## What It Does
 
-SentinelSRE turns cloud telemetry and deployment events into an evidence-based
-incident workflow:
+SentinelSRE turns runtime evidence into a controlled reliability workflow:
 
-1. Collect normalized signals from AWS CloudWatch and Azure Monitor adapters.
-2. Evaluate SLOs, error budgets, and multi-window burn rates consistently.
-3. Correlate alerts, deployments, logs, metrics, and dependency failures.
-4. Rank likely causes with evidence and explicit confidence levels.
-5. Route responders to provider-specific or provider-neutral runbooks.
-6. Record decisions and generate a blameless postmortem after resolution.
+1. Run an instrumented checkout workload through OpenTelemetry, Prometheus, and
+   Grafana.
+2. Evaluate SLOs, error budgets, and multi-window burn rates.
+3. Inject bounded local faults and gather supporting plus contradicting evidence.
+4. Draft a typed remediation request without granting the investigator mutation
+   privileges.
+5. Enforce action, scope, identity, approval, verification, and audit controls
+   at a separate broker.
+6. Prove Kubernetes recovery and generate an integrity-linked blameless
+   postmortem.
 
-The project is local-first: synthetic fixtures make the complete workflow
-reproducible without a paid cloud account. Real cloud access is added through
-optional, least-privilege provider adapters.
+The project is local-first and requires no paid cloud account. AWS and Azure are
+represented by real Terraform EKS/AKS foundations that are provider-validated
+and plan-tested without apply.
 
 ## Multi-Cloud Scope
 
-| Capability | AWS | Azure | Normalized output |
+| Capability | AWS | Azure | Current proof |
 | --- | --- | --- | --- |
-| Metrics and alerts | CloudWatch | Azure Monitor | Reliability signal |
-| Logs | CloudWatch Logs | Log Analytics | Evidence event |
-| Deployments | CodeDeploy / CloudTrail | Azure Activity Log | Change event |
-| Service ownership | Resource tags | Resource tags | Service metadata |
-| Runbook execution (planned) | Systems Manager | Azure Automation | Audited action |
+| Managed Kubernetes | Private EKS | Private AKS | Terraform schema + mocked plan |
+| Identity | IAM and OIDC | Entra RBAC and workload identity | Module assertions |
+| Encryption/logging | KMS, control-plane and flow logs | Log Analytics, Key Vault CSI | Module assertions |
+| Network isolation | Multi-AZ private subnets | VNet, NSG, Azure network policy | Static and provider validation |
+| Live telemetry adapters | CloudWatch/CloudTrail planned | Azure Monitor/Activity Log planned | Explicitly not claimed |
 
-Provider APIs stay behind adapters. SLO evaluation, incident correlation,
-triage policy, and postmortem generation operate on a shared internal schema.
+Provider-specific controls remain visible rather than being flattened into a
+lowest-common-denominator abstraction.
 
 ## Mission
 Build production-style reliability systems, runbooks, and automation that demonstrate senior SRE judgment:
@@ -42,14 +60,11 @@ Build production-style reliability systems, runbooks, and automation that demons
 - AIOps-assisted triage workflows
 - Multi-cloud reliability patterns without hiding provider-specific behavior
 
-## 7-Day Sprint (40-day output style)
-- Day 1: Foundation, architecture, roadmap, standards
-- Day 2: SLO engine v1 + policy checks
-- Day 3: Incident simulator + runbook router
-- Day 4: Observability stack + golden signals
-- Day 5: Alert quality scoring + dedupe heuristics
-- Day 6: AIOps triage assistant (local-first)
-- Day 7: Portfolio polish + blog pack + demos
+## Delivery status
+
+All seven enterprise-demo milestones are complete. See the
+[delivery plan](docs/roadmap/SPRINT-7D.md) and
+[latest full result](docs/demo/LATEST-RESULT.md).
 
 ## Repo Layout
 - `projects/` — hands-on systems and tools
@@ -102,7 +117,10 @@ Useful gates for nightly automation:
 - `policy.max_insufficient_windows` (JSON field) to tolerate a bounded number of low-traffic windows before downgrading a service to `insufficient-data` (default `0` preserves strict behavior)
 
 ## Current Status
-See `docs/roadmap/SPRINT-7D.md` and `logs/daily/2026-02-23.md`.
+
+The enterprise demo is complete and passed its full local showcase. See the
+[completion matrix](docs/demo/COMPLETION-MATRIX.md) and
+[August 14 engineering log](logs/daily/2026-08-14.md).
 
 ## Governed Engineering Agents
 

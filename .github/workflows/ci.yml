@@ -68,6 +68,22 @@ jobs:
       - name: Render GitOps resources and enforce admission policy
         run: python3 scripts/gitops_validate.py
 
+  portfolio-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13.0"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build, render-test, and lint the interview portfolio
+        working-directory: web
+        run: |
+          npm ci
+          npm test
+          npm run lint
+
   live-observability-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10

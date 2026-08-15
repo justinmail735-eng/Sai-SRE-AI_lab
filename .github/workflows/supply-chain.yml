@@ -18,12 +18,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
           version: v0.74.0
       - uses: anchore/sbom-action/download-syft@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
       - name: Reject vulnerable dependencies, IaC risks, and secrets
         run: trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --exit-code 1 .
+      - name: Enforce npm advisory policy and expiring risk acceptances
+        run: |
+          npm ci --prefix web --ignore-scripts
+          python3 scripts/npm_audit_check.py
       - name: Generate CycloneDX software bill of materials
         run: syft dir:. --source-name sentinelsre --source-version "${GITHUB_SHA}" -o cyclonedx-json=sentinelsre-sbom.cdx.json
       - uses: actions/upload-artifact@v4

@@ -1,4 +1,7 @@
-.PHONY: check test observability-generate agent-governance agent-investigate chaos-plan chaos-k8s evidence-check terraform-fmt terraform-validate terraform-test gitops-validate security-check k8s-validate k8s-up k8s-verify k8s-down demo-up demo-verify demo-traffic demo-fault-errors demo-fault-latency demo-recover demo-down
+.PHONY: showcase check test observability-generate agent-governance agent-investigate chaos-plan chaos-k8s evidence-check terraform-fmt terraform-validate terraform-test gitops-validate security-check k8s-validate k8s-up k8s-verify k8s-down demo-up demo-verify demo-traffic demo-fault-errors demo-fault-latency demo-recover demo-down
+
+showcase:
+	python3 scripts/showcase.py --acknowledge LOCAL-DEMO-ONLY
 
 check:
 	python3 scripts/reliability_check.py
@@ -41,6 +44,7 @@ security-check: gitops-validate
 	mkdir -p build/security
 	syft dir:. --source-name sentinelsre --source-version dev -o cyclonedx-json=build/security/sentinelsre-sbom.cdx.json
 	trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --exit-code 1 --skip-dirs .git --skip-dirs build .
+	python3 scripts/npm_audit_check.py
 
 k8s-validate:
 	helm lint platform/helm/checkout-api

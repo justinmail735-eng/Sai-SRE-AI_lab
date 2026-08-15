@@ -1,56 +1,24 @@
-# 7-Day Execution Plan (40-Day Output Density)
+# SentinelSRE enterprise-demo delivery plan
 
-## Outcomes by Day 7
-1. Ship 6–8 serious SRE/AIOps modules.
-2. Publish portfolio-ready docs + runbooks.
-3. Produce blog-ready engineering narratives tied to shipped work.
-4. Demonstrate the same incident workflow across AWS and Azure fixtures.
+Target: Friday, August 21, 2026.
 
-## Day-by-Day
+| Milestone | Outcome | Evidence | Status |
+| --- | --- | --- | --- |
+| 1. Live reliability lab | Instrumented checkout, OTel, Prometheus, Grafana, controlled faults | Live Compose verifier | Complete |
+| 2. Kubernetes platform | Hardened Helm release on a three-node Kind cluster | Manifest and runtime checks | Complete |
+| 3. Multi-cloud foundations | Private EKS and AKS Terraform with provider-native controls | Init, validate, TFLint, mocked plans | Complete |
+| 4. GitOps and security | Argo CD desired state, admission, scan, SBOM, signing workflow | Positive/negative policy and security gates | Complete |
+| 5. Governed agents | Read-only investigation and approval-gated fixed action broker | Denial paths, live recovery, audit hash | Complete |
+| 6. Chaos and learning | Application incident, Pod loss, bounded recovery, postmortem | Committed evidence and drift gate | Complete |
+| 7. Portfolio delivery | One-command showcase, architecture, interview narrative, hosted UI | 11/11 showcase result and site tests | Complete |
 
-### Day 1 — Foundation + Standards
-- Define architecture and coding standards.
-- Create project skeletons and execution contracts.
-- Publish roadmap and daily tracker.
+## Next engineering increments
 
-### Day 2 — SLO / Error Budget Engine
-- Implement SLO spec format.
-- Build checker for burn-rate and error-budget policy.
-- Add sample services and CI validation workflow.
+These are intentionally outside the completed demo boundary:
 
-### Day 3 — Incident Simulation Lab
-- Build fault injector scenarios (latency, 5xx, dependency failures).
-- Add incident timeline generator and severity classifier.
-- Create runbook router draft.
-
-### Day 4 — Observability Stack
-- Stand up local monitoring stack templates.
-- Dashboards for golden signals.
-- Alert rules + noise-control baseline.
-
-### Day 5 — Alert Quality & Reliability Guardrails
-- Alert quality scoring tool (precision/recall proxies).
-- Deduplication + suppression heuristics.
-- CI guardrails for risky deployment patterns.
-
-### Day 6 — AIOps Triage Assistant
-- Local-first triage CLI for incident summaries.
-- Correlate logs/metrics/events snapshots.
-- Recommend runbook actions with confidence labels.
-
-### Multi-Cloud Extension
-- Define a provider-neutral service, signal, change, and evidence schema.
-- Implement deterministic AWS CloudWatch/CloudTrail fixtures and adapter.
-- Implement deterministic Azure Monitor/Activity Log fixtures and adapter.
-- Run one equivalent failure scenario through both providers.
-- Keep live credentials optional and cloud actions read-only by default.
-
-### Day 7 — Portfolio + Blog Finalization
-- Recruiter-facing summary deck in markdown.
-- Architecture walkthrough docs.
-- 3–5 blog drafts mapped to modules.
-
-## Daily Cadence
-- Build: 45–90 min focused task
-- Document: 10–15 min decision note
-- Ship: 1 meaningful commit minimum
+1. Implement read-only CloudWatch/CloudTrail and Azure Monitor/Activity Log
+   adapters against dedicated sandbox accounts.
+2. Store approvals in KMS/Key Vault and audit events in immutable cloud storage.
+3. Add a service catalog and ownership synchronization adapter.
+4. Exercise regional and dependency failures with network-level chaos tooling.
+5. Promote a signed release through a real non-production Argo CD cluster.

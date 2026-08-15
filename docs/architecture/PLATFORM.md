@@ -1,72 +1,80 @@
-# Multi-Cloud Platform Architecture (v1)
+# SentinelSRE architecture
 
-## Principles
-- Local-first and reproducible.
-- Production-style patterns over toy examples.
-- Explicit tradeoffs and failure modes.
-- Provider-neutral core with thin, testable cloud adapters.
-- Read-only discovery and diagnosis by default.
-- Human approval for production remediation.
+SentinelSRE is an evidence-first SRE engineering lab. It demonstrates how a
+platform can observe a workload, evaluate reliability, investigate a failure,
+propose a constrained action, require human authorization, verify recovery, and
+retain reviewable evidence. The same repository defines hardened Kubernetes and
+provider-native AWS/Azure foundations.
 
-## System Boundary
+## System flow
 
-The platform does not replace CloudWatch, Azure Monitor, or an incident-management
-system. It consumes their signals, converts them to a shared reliability model,
-and coordinates SLO evaluation, evidence-based triage, runbook selection, and
-postmortem generation.
-
-```text
-AWS CloudWatch / CloudTrail ---- AWS adapter ---\
-                                              +--> normalized events
-Azure Monitor / Activity Log --- Azure adapter --/          |
-                                                              v
-SLO Guardian -> Incident Commander -> Triage Agent -> Runbook Agent
-                                                              |
-                                                              v
-                                                    Postmortem Agent
+```mermaid
+flowchart LR
+    U["Synthetic user"] --> A["Checkout API"]
+    A --> O["OpenTelemetry Collector"]
+    O --> P["Prometheus"]
+    P --> G["Grafana + SLO alerts"]
+    A --> I["Incident Investigator Agent"]
+    P --> I
+    I --> R["Typed action request"]
+    R --> B["Governed Action Broker"]
+    H["Authorized human"] -->|"request-bound approval"| B
+    Y["Policy + identity registry"] --> B
+    B -->|"fixed adapter"| A
+    B --> V["Post-action verification"]
+    V --> L["Hash-chained audit event"]
+    L --> M["Blameless postmortem"]
 ```
 
-## Cloud Adapter Contract
+## Deployment surfaces
 
-Each provider adapter converts native resources into the same core objects:
+```mermaid
+flowchart TB
+    Git["Git repository"] --> CI["Continuous gates"]
+    Git --> Helm["Hardened Helm chart"]
+    Helm --> Kind["3-node local Kind cluster"]
+    Helm --> EKS["Private Amazon EKS foundation"]
+    Helm --> AKS["Private Azure AKS foundation"]
+    Git --> Argo["Argo CD desired state"]
+    Argo --> EKS
+    Argo --> AKS
+    CI --> Scan["Trivy + npm policy + Syft SBOM"]
+    CI --> Sign["Tagged GHCR image + Cosign"]
+    Sign --> Admit["Kyverno signature admission"]
+```
 
-- `Service`: identity, provider, region, environment, and owner.
-- `ReliabilitySignal`: metric, log, alert, or dependency symptom.
-- `ChangeEvent`: deployment, configuration, or infrastructure change.
-- `IncidentEvidence`: timestamped fact with source and correlation metadata.
-- `RunbookAction`: proposed action, risk, approval requirement, and audit result.
+## Implemented boundaries
 
-The first adapters target AWS and Azure. A future provider can implement the
-same contract without changing the agent workflow.
+| Surface | What is implemented | Proof |
+| --- | --- | --- |
+| Workload | Live checkout service, health, metrics, safe fault modes | Docker Compose smoke test |
+| Observability | OTel collection, Prometheus metrics/rules, Grafana dashboard | Live API verifier |
+| Kubernetes | Helm, probes, resources, security contexts, PDB, HPA, NetworkPolicy, topology spread | Multi-node runtime verifier and Pod-loss experiment |
+| AWS | VPC, private EKS, KMS, logging, IAM, managed nodes | Provider initialization, schema validation, TFLint, mocked plan tests |
+| Azure | VNet, private AKS, Entra RBAC, workload identity, Policy, Log Analytics | Provider initialization, schema validation, TFLint, mocked plan test |
+| GitOps | Scoped Argo project and self-healing Application | Kustomize render and contract validator |
+| Supply chain | Source/IaC/image scan, SBOM, tagged publish, keyless signing, admission rule | Security workflow and local policy tests |
+| Agents | Evidence-only investigator plus approval-gated fixed action broker | Denial tests and live recovery audit |
+| Learning | Structured evidence and deterministic postmortem | Hash/drift gate |
 
-## Planned Components
-1. **slo-engine**
-   - Inputs: SLI metrics snapshots / synthetic data
-   - Outputs: policy pass/fail, burn-rate warnings
+## Trust model
 
-2. **incident-sim**
-   - Simulates realistic outage/failure patterns
-   - Produces event streams for testing response logic
+- Discovery, diagnosis, dashboard generation, and planning may run without
+  mutation privileges.
+- The investigator cannot execute its own recommendation.
+- Local mutations require an allowlisted action, exact target, allowed
+  parameters, active approver role, separation of duties, an unexpired approval
+  signature bound to the full request, and explicit apply intent.
+- Production is draft-only in the checked-in policy. There is no autonomous
+  production remediation path.
+- The local HMAC and audit hash chain demonstrate protocol behavior. Production
+  would move keys to KMS/Key Vault, identities to an enterprise IdP, and audit
+  events to immutable external storage.
 
-3. **observability-pack**
-   - Baseline dashboards and alerts for core golden signals
-   - Alert tuning and routing guidance
+## Honest scope
 
-4. **triage-assistant**
-   - Summarizes incidents from local artifacts
-   - Suggests next runbook actions
-
-5. **cloud-adapters**
-   - AWS CloudWatch, CloudWatch Logs, and CloudTrail ingestion
-   - Azure Monitor, Log Analytics, and Activity Log ingestion
-   - Offline fixtures for deterministic demos and tests
-
-6. **agent-workflow**
-   - SLO Guardian, Incident Commander, Triage, Runbook, and Postmortem agents
-   - Evidence and confidence attached to every diagnosis
-   - Approval boundary around mutating cloud actions
-
-## Non-Goals (for now)
-- Vendor-locked integrations.
-- Paid APIs as hard requirements.
-- Autonomous production changes without an explicit approval policy.
+The workload, telemetry path, failure injection, governed recovery, and
+Kubernetes chaos experiment run locally and are verified. EKS and AKS are real
+Terraform resources validated through provider schemas and mocked plans, but
+the demo does not apply them or incur cloud cost. CloudWatch, CloudTrail, Azure
+Monitor, and Activity Log ingestion adapters remain future work.
