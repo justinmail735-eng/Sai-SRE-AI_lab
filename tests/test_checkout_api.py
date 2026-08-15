@@ -56,12 +56,18 @@ class CheckoutApiTests(unittest.TestCase):
             self.assertEqual(json.load(response)["fault_mode"], "errors")
         with self.assertRaises(urllib.error.HTTPError) as context:
             self.request("/checkout")
-        self.assertEqual(context.exception.code, 503)
+        try:
+            self.assertEqual(context.exception.code, 503)
+        finally:
+            context.exception.close()
 
     def test_invalid_fault_mode_is_rejected(self):
         with self.assertRaises(urllib.error.HTTPError) as context:
             self.request("/admin/fault?mode=delete-everything", method="POST")
-        self.assertEqual(context.exception.code, 400)
+        try:
+            self.assertEqual(context.exception.code, 400)
+        finally:
+            context.exception.close()
 
     def test_metrics_expose_exactly_one_active_fault_mode(self):
         checkout_app.CheckoutHandler.state.set_fault("latency")

@@ -1,0 +1,46 @@
+{
+  "api_version": "sentinelsre.io/v1",
+  "environments": {
+    "local": {"draft_only": false, "approval_required": true, "approver_roles": ["incident-commander", "platform-lead"]},
+    "staging": {"draft_only": true, "approval_required": true, "approver_roles": ["incident-commander", "platform-lead"]},
+    "production": {"draft_only": true, "approval_required": true, "approver_roles": ["platform-lead"]}
+  },
+  "actions": {
+    "fault.recover": {
+      "executable": true,
+      "risk": "medium",
+      "requesters": ["IncidentInvestigatorAgent"],
+      "environments": ["local"],
+      "target_pattern": "^checkout-api$",
+      "parameters": {
+        "base_url": {"required": true, "enum": ["http://127.0.0.1:8080", "http://localhost:8080"]}
+      }
+    },
+    "kubernetes.restart": {
+      "executable": true,
+      "risk": "high",
+      "requesters": ["IncidentCommanderAgent"],
+      "environments": ["local"],
+      "target_pattern": "^sentinelsre/checkout-checkout-api$",
+      "parameters": {}
+    },
+    "kubernetes.scale": {
+      "executable": true,
+      "risk": "high",
+      "requesters": ["IncidentCommanderAgent"],
+      "environments": ["local"],
+      "target_pattern": "^sentinelsre/checkout-checkout-api$",
+      "parameters": {
+        "replicas": {"required": true, "minimum": 2, "maximum": 6}
+      }
+    },
+    "terraform.plan": {
+      "executable": false,
+      "risk": "low",
+      "requesters": ["PlatformEngineerAgent"],
+      "environments": ["local", "staging", "production"],
+      "target_pattern": "^(aws-dev|azure-dev)$",
+      "parameters": {}
+    }
+  }
+}

@@ -15,6 +15,7 @@ class ReliabilityCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("PASS observability-drift:checkout-api", result.stdout)
         self.assertIn("PASS slo-policy", result.stdout)
+        self.assertIn("PASS agent-governance", result.stdout)
 
     def test_json_output_reports_each_check(self):
         result = subprocess.run(
@@ -23,7 +24,10 @@ class ReliabilityCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
         self.assertTrue(payload["passed"])
-        self.assertEqual({item["name"] for item in payload["checks"]}, {"observability-drift:checkout-api", "slo-policy"})
+        self.assertEqual(
+            {item["name"] for item in payload["checks"]},
+            {"observability-drift:checkout-api", "slo-policy", "agent-governance"},
+        )
 
     def test_unhealthy_slo_snapshot_fails_continuous_check(self):
         unhealthy = {

@@ -1,4 +1,4 @@
-.PHONY: check test observability-generate terraform-fmt terraform-validate terraform-test gitops-validate security-check k8s-validate k8s-up k8s-verify k8s-down demo-up demo-verify demo-traffic demo-fault-errors demo-fault-latency demo-recover demo-down
+.PHONY: check test observability-generate agent-governance agent-investigate terraform-fmt terraform-validate terraform-test gitops-validate security-check k8s-validate k8s-up k8s-verify k8s-down demo-up demo-verify demo-traffic demo-fault-errors demo-fault-latency demo-recover demo-down
 
 check:
 	python3 scripts/reliability_check.py
@@ -8,6 +8,13 @@ test:
 
 observability-generate:
 	python3 agents/observability_agent.py --spec reliability/services/checkout-api.json --output-dir observability/generated/checkout-api
+
+agent-governance:
+	python3 scripts/governance_check.py
+
+agent-investigate:
+	mkdir -p build/agent-demo
+	python3 agents/incident_investigator.py --base-url http://127.0.0.1:8080 --incident-id INC-LIVE-DEMO --output build/agent-demo/investigation.json
 
 terraform-fmt:
 	terraform fmt -recursive infrastructure

@@ -1,0 +1,26 @@
+{
+  "api_version": "sentinelsre.io/v1",
+  "kind": "IdentityRegistry",
+  "identities": {
+    "sai.demo": {
+      "display_name": "Sai Demo",
+      "roles": ["incident-commander"],
+      "active": true
+    },
+    "platform.lead": {
+      "display_name": "Platform Lead",
+      "roles": ["platform-lead"],
+      "active": true
+    },
+    "alex.observer": {
+      "display_name": "Alex Observer",
+      "roles": ["observer"],
+      "active": true
+    },
+    "former.engineer": {
+      "display_name": "Former Engineer",
+      "roles": ["platform-lead"],
+      "active": false
+    }
+  }
+}

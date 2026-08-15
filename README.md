@@ -106,10 +106,12 @@ See `docs/roadmap/SPRINT-7D.md` and `logs/daily/2026-02-23.md`.
 
 ## Governed Engineering Agents
 
-The first working engineering agent is the **Observability Engineer Agent**. It
-converts a versioned service specification into a Grafana golden-signals
-dashboard, Prometheus SLO alerts, and an auditable validation result. It drafts
-and validates reviewable files; it does not mutate cloud infrastructure.
+SentinelSRE includes an **Observability Engineer Agent**, a live **Incident
+Investigator Agent**, and an **Action Broker**. The investigator automatically
+collects read-only evidence and drafts typed remediation requests. The broker is
+the sole mutation boundary: default dry-run, explicit scoped policy, independent
+role-based approval, request-bound expiring signatures, fixed adapters,
+post-action verification, and a hash-chained audit trail.
 
 Generate the checkout service observability pack:
 
@@ -126,10 +128,19 @@ python3 scripts/reliability_check.py
 ```
 
 The gate verifies generated-artifact drift and strict SLO policy. GitHub Actions
-runs it for pushes, pull requests, manual dispatches, and every six hours. The
-scheduled check currently uses deterministic telemetry fixtures; live AWS,
-Azure, Prometheus, or OpenTelemetry coverage will only be claimed after those
-connections are implemented and tested.
+runs it for pushes, pull requests, manual dispatches, and every six hours. It
+also continuously proves the action allowlist, separation-of-duties, approval
+signature, arbitrary-action denial, identity lifecycle, and audit-chain
+invariants. The scheduled policy check uses deterministic telemetry fixtures;
+a separate CI job starts and verifies the live local OpenTelemetry, Prometheus,
+and Grafana path. AWS and Azure API telemetry adapters remain future integration
+work and are not represented as complete.
+
+The local lab does have a separately verified live human-in-the-loop path: an
+injected checkout failure was discovered from runtime metrics, unapproved
+execution was denied, the seeded incident commander approved the exact request,
+the broker recovered the service, and its audit chain verified. See
+[the agent guide](agents/README.md) to reproduce it.
 
 ## Live Reliability Lab
 
