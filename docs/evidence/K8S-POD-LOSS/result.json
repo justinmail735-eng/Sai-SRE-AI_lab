@@ -1,0 +1,31 @@
+{
+  "api_version": "sentinelsre.io/v1",
+  "experiment": "single-pod-loss",
+  "kind": "ChaosExperimentResult",
+  "mode": "execute",
+  "recovered": true,
+  "recovery_seconds": 2.443,
+  "scope": {
+    "context": "kind-sentinelsre",
+    "deployment": "checkout-checkout-api",
+    "namespace": "sentinelsre",
+    "victim": "checkout-checkout-api-646dcfc998-j427m"
+  },
+  "timeline": [
+    {
+      "at": "2026-08-15T00:04:19Z",
+      "detail": "2+ ready replicas protected by PDB on kind-sentinelsre",
+      "event": "preflight_passed"
+    },
+    {
+      "at": "2026-08-15T00:04:19Z",
+      "detail": "deleted exactly one Pod: checkout-checkout-api-646dcfc998-j427m",
+      "event": "fault_injected"
+    },
+    {
+      "at": "2026-08-15T00:04:21Z",
+      "detail": "ready=2/2, replacement_observed=True",
+      "event": "recovered"
+    }
+  ]
+}

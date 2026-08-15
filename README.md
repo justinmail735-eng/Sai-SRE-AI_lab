@@ -209,3 +209,27 @@ make security-check
 
 See [the supply-chain control guide](security/README.md) for the trust boundary
 and [the platform guide](platform/README.md) for promotion and bootstrap.
+
+## Incident drills and recovery evidence
+
+The demo includes two measured failure paths:
+
+- a live checkout 503 incident investigated and recovered through the governed
+  agent approval boundary;
+- deletion of one exact Pod in the local Kind cluster, followed by replacement
+  UID and 2/2 readiness verification.
+
+Both produce machine-readable timelines. The application drill additionally
+produces a request-bound audit event and a deterministic blameless postmortem.
+Committed evidence is continuously checked for hash integrity and generator
+drift.
+
+```bash
+make chaos-plan
+make chaos-k8s
+make evidence-check
+```
+
+See [the experiment guide](reliability/chaos/README.md), the
+[live incident postmortem](docs/postmortems/INC-DEMO-ERROR.md), and the
+[Pod-loss result](docs/evidence/K8S-POD-LOSS/result.json).

@@ -36,6 +36,11 @@ The Kind values intentionally disable the HPA because Metrics Server is not a
 dependency of the minimal lab. The default chart keeps it enabled for managed
 cluster environments.
 
+The runtime job also executes a bounded single-Pod-loss experiment and requires
+a replacement UID plus full replica recovery within two minutes. See the
+[chaos guide](../reliability/chaos/README.md) for the safety preconditions and
+captured evidence.
+
 ## GitOps delivery
 
 `platform/gitops` defines an Argo CD project with repository/destination

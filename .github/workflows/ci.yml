@@ -123,6 +123,13 @@ jobs:
       - name: Verify live Kubernetes safeguards and networking
         run: |
           python3 scripts/k8s_runtime_check.py
+      - name: Prove bounded recovery from one local Pod loss
+        run: |
+          python3 scripts/k8s_chaos_check.py \
+            --execute \
+            --acknowledge DELETE-ONE-LOCAL-CHECKOUT-POD \
+            --output build/k8s-chaos-result.json
+          python3 scripts/k8s_runtime_check.py
       - name: Preserve cluster diagnostics
         if: failure()
         run: |

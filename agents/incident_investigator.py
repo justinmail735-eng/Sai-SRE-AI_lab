@@ -46,12 +46,14 @@ def investigate(base_url: str, incident_id: str, created_at: str | None = None) 
         f"GET /checkout returned HTTP {checkout_status}: {checkout_body.strip()[:120]}",
         f"checkout_fault_mode reports {mode}",
     ]
+    observed_at = created_at or utc_now().isoformat().replace("+00:00", "Z")
     report = {
         "api_version": "sentinelsre.io/v1",
         "kind": "IncidentInvestigation",
         "incident_id": incident_id,
         "agent": "IncidentInvestigatorAgent",
         "mode": "read-only",
+        "observed_at": observed_at,
         "evidence": evidence,
         "hypotheses": [],
         "recommended_action": None,
@@ -76,7 +78,7 @@ def investigate(base_url: str, incident_id: str, created_at: str | None = None) 
             evidence=evidence,
             verification=["fault mode equals none", "health endpoint returns HTTP 200"],
             rollback="No rollback: restoring an intentionally injected failure is unsafe; re-injection remains a separate approved demo action.",
-            created_at=created_at or utc_now().isoformat().replace("+00:00", "Z"),
+            created_at=observed_at,
         )
         report["recommended_action"] = {"request_id": request.request_id, **request.to_dict()}
     else:

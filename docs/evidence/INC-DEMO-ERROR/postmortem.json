@@ -1,0 +1,72 @@
+{
+  "action_items": [
+    {
+      "action": "Add checkout-path synthetic probing to the SLO signal.",
+      "owner": "commerce-sre",
+      "status": "planned"
+    },
+    {
+      "action": "Design immutable audit export for AWS and Azure.",
+      "owner": "platform-sre",
+      "status": "planned"
+    },
+    {
+      "action": "Integrate workforce identity with approval verification.",
+      "owner": "security-platform",
+      "status": "planned"
+    }
+  ],
+  "api_version": "sentinelsre.io/v1",
+  "contributing_factors": [
+    "The basic health endpoint stayed green while the user-facing checkout path failed.",
+    "The experiment intentionally activated a local-only application fault mode."
+  ],
+  "detection": "Incident Investigator Agent correlated a failed checkout request with the exported fault-mode metric.",
+  "evidence": {
+    "agent": "IncidentInvestigatorAgent",
+    "approver": "sai.demo",
+    "audit_event_hash": "cfcbed6871c1c15c2a4f1223825298172948afbb32dd6c1a4ffeeb1bf64babcf",
+    "request_digest": "c2e54daf61eb60084ebbed43b34c55b065759d08259cd1e51ad418715fcf95a4",
+    "request_id": "ACT-C2E54DAF61EB"
+  },
+  "impact": "Local synthetic checkout requests returned HTTP 503. No production users or cloud resources were involved.",
+  "improvements": [
+    "Add an external synthetic availability probe so a green process-health endpoint cannot hide checkout failure.",
+    "Export agent audit events to immutable cloud storage for production-grade retention.",
+    "Replace demo identities and the local approval secret with enterprise identity and KMS-backed signing."
+  ],
+  "incident_id": "INC-DEMO-ERROR",
+  "kind": "IncidentPostmortem",
+  "resolution": "checkout fault mode set to none",
+  "root_cause": "local demo fault injection is set to errors",
+  "severity": "SEV-2",
+  "status": "resolved",
+  "summary": "Controlled checkout failure exercised SentinelSRE detection, governance, recovery, and verification.",
+  "timeline": [
+    {
+      "at": "2026-08-15T00:04:14Z",
+      "detail": "GET /checkout returned HTTP 503: {\"status\": \"unavailable\", \"service\": \"checkout-api\", \"duration_ms\": 10.64, \"fault_mode\": \"errors\"}",
+      "event": "detected"
+    },
+    {
+      "at": "2026-08-15T00:04:14Z",
+      "detail": "ACT-C2E54DAF61EB: fault.recover",
+      "event": "action proposed"
+    },
+    {
+      "at": "2026-08-15T00:04:14Z",
+      "detail": "approved by sai.demo",
+      "event": "approved action started"
+    },
+    {
+      "at": "2026-08-15T00:04:14Z",
+      "detail": "fault mode is none; health endpoint returned HTTP 200",
+      "event": "succeeded"
+    }
+  ],
+  "what_went_well": [
+    "Runtime evidence identified the injected mode without granting the investigator mutation access.",
+    "Unauthorized and unapproved paths were denied before execution.",
+    "The approved adapter restored service and verified both fault state and health."
+  ]
+}
