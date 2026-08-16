@@ -17,7 +17,7 @@ class ReliabilityCheckTests(unittest.TestCase):
         self.assertIn("PASS slo-policy", result.stdout)
         self.assertIn("PASS agent-governance", result.stdout)
         self.assertIn("PASS drill-evidence", result.stdout)
-        self.assertIn("PASS workflow-runtime-hygiene", result.stdout)
+        self.assertIn("PASS workflow-supply-chain-hygiene", result.stdout)
 
     def test_json_output_reports_each_check(self):
         result = subprocess.run(
@@ -33,7 +33,7 @@ class ReliabilityCheckTests(unittest.TestCase):
                 "slo-policy",
                 "agent-governance",
                 "drill-evidence",
-                "workflow-runtime-hygiene",
+                "workflow-supply-chain-hygiene",
             },
         )
 

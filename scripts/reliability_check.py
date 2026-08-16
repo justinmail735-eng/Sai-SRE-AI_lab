@@ -70,7 +70,7 @@ def run_checks(slo_input: Path) -> list[dict[str, object]]:
     )
     checks.append(check_command("agent-governance", [sys.executable, str(GOVERNANCE_CHECK)]))
     checks.append(check_command("drill-evidence", [sys.executable, str(EVIDENCE_CHECK)]))
-    checks.append(check_command("workflow-runtime-hygiene", [sys.executable, str(WORKFLOW_HYGIENE_CHECK)]))
+    checks.append(check_command("workflow-supply-chain-hygiene", [sys.executable, str(WORKFLOW_HYGIENE_CHECK)]))
     return checks
 
 
