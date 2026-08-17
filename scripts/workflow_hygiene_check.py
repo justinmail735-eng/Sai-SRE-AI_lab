@@ -42,8 +42,30 @@ def unpinned_actions(workflows: Path) -> list[str]:
     return findings
 
 
+def jobs_without_timeouts(workflows: Path) -> list[str]:
+    findings: list[str] = []
+    for workflow in sorted(workflows.glob("*.y*ml")):
+        lines = workflow.read_text().splitlines()
+        jobs_start = next((index for index, line in enumerate(lines) if line == "jobs:"), None)
+        if jobs_start is None:
+            continue
+        job_starts = [
+            index for index in range(jobs_start + 1, len(lines))
+            if re.fullmatch(r"  [A-Za-z0-9_-]+:", lines[index])
+        ]
+        for position, start in enumerate(job_starts):
+            end = job_starts[position + 1] if position + 1 < len(job_starts) else len(lines)
+            job_name = lines[start].strip()[:-1]
+            if not any(re.fullmatch(r"    timeout-minutes:\s+[1-9][0-9]*", line) for line in lines[start:end]):
+                findings.append(
+                    f"{workflow.relative_to(workflows.parent.parent)}:{start + 1}: "
+                    f"job {job_name} must define a positive timeout-minutes budget"
+                )
+    return findings
+
+
 def main() -> int:
-    findings = outdated_actions(WORKFLOWS) + unpinned_actions(WORKFLOWS)
+    findings = outdated_actions(WORKFLOWS) + unpinned_actions(WORKFLOWS) + jobs_without_timeouts(WORKFLOWS)
     if findings:
         print("FAIL workflow-supply-chain-hygiene")
         print("\n".join(findings))
