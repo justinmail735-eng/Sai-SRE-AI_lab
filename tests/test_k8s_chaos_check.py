@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.k8s_chaos_check import CONTEXT, select_victim, validate_preconditions
+from scripts.k8s_chaos_check import CONTEXT, recovery_status, select_victim, validate_preconditions
 
 
 def fixtures(replicas=2, ready=2, nodes=("worker-a", "worker-b"), min_available=1):
@@ -37,6 +37,32 @@ class KubernetesChaosTests(unittest.TestCase):
     def test_victim_selection_is_deterministic(self):
         _, _, pods = fixtures()
         self.assertEqual(select_victim(pods), "checkout-0")
+
+    def test_terminating_ready_pod_does_not_signal_recovery(self):
+        deployment, _, pods = fixtures()
+        deployment["status"]["availableReplicas"] = 1
+        pods["items"][0]["metadata"]["deletionTimestamp"] = "2026-08-18T13:09:07Z"
+        pods["items"].append({
+            "metadata": {"name": "checkout-replacement", "uid": "uid-new"},
+            "spec": {"nodeName": "worker-a"},
+            "status": {"conditions": [{"type": "Ready", "status": "False"}]},
+        })
+
+        recovered, detail = recovery_status(deployment, pods, {"uid-0", "uid-1"})
+
+        self.assertFalse(recovered)
+        self.assertIn("active_ready=1/2", detail)
+        self.assertIn("available=1/2", detail)
+
+    def test_ready_replacement_and_full_availability_signal_recovery(self):
+        deployment, _, pods = fixtures()
+        deployment["status"]["availableReplicas"] = 2
+        pods["items"][0]["metadata"]["uid"] = "uid-new"
+
+        recovered, detail = recovery_status(deployment, pods, {"uid-0", "uid-1"})
+
+        self.assertTrue(recovered)
+        self.assertIn("ready_replacement_observed=True", detail)
 
 
 if __name__ == "__main__":

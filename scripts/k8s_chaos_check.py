@@ -64,6 +64,30 @@ def select_victim(pods: dict[str, Any]) -> str:
     return candidates[0]
 
 
+def recovery_status(
+    deployment: dict[str, Any], pods: dict[str, Any], original_uids: set[str]
+) -> tuple[bool, str]:
+    desired = int(deployment.get("spec", {}).get("replicas", 0))
+    available = int(deployment.get("status", {}).get("availableReplicas", 0))
+    active_ready = [
+        pod
+        for pod in pods.get("items", [])
+        if not pod.get("metadata", {}).get("deletionTimestamp")
+        and any(
+            condition.get("type") == "Ready" and condition.get("status") == "True"
+            for condition in pod.get("status", {}).get("conditions", [])
+        )
+    ]
+    active_ready_uids = {pod["metadata"]["uid"] for pod in active_ready}
+    replacement_ready = bool(active_ready_uids - original_uids)
+    recovered = desired >= 2 and len(active_ready) == desired and available == desired and replacement_ready
+    detail = (
+        f"active_ready={len(active_ready)}/{desired}, available={available}/{desired}, "
+        f"ready_replacement_observed={replacement_ready}"
+    )
+    return recovered, detail
+
+
 def snapshot() -> tuple[str, dict[str, Any], dict[str, Any], dict[str, Any]]:
     context = subprocess.run(
         ["kubectl", "config", "current-context"], check=True, text=True, capture_output=True
@@ -107,12 +131,8 @@ def run_experiment(execute: bool, acknowledgement: str, timeout_seconds: int = 1
     last_detail = "replacement not observed"
     while time.monotonic() < deadline:
         _, current_deployment, _, current_pods = snapshot()
-        current_uids = {pod["metadata"]["uid"] for pod in current_pods["items"]}
-        ready = current_deployment.get("status", {}).get("readyReplicas", 0)
-        desired = current_deployment.get("spec", {}).get("replicas", 0)
-        replacement = bool(current_uids - original_uids)
-        last_detail = f"ready={ready}/{desired}, replacement_observed={replacement}"
-        if desired >= 2 and ready == desired and replacement:
+        recovered, last_detail = recovery_status(current_deployment, current_pods, original_uids)
+        if recovered:
             result["recovered"] = True
             result["recovery_seconds"] = round(timeout_seconds - (deadline - time.monotonic()), 3)
             timeline.append({"at": timestamp(), "event": "recovered", "detail": last_detail})
