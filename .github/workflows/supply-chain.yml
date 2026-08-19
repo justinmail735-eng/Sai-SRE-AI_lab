@@ -51,7 +51,9 @@ jobs:
         with:
           version: v0.74.0
       - name: Build the exact release candidate
-        run: docker build --tag sentinelsre-checkout:${{ github.sha }} applications/checkout-api
+        run: |
+          python3 scripts/retry_command.py --attempts 3 --base-delay 5 -- \
+            docker build --tag sentinelsre-checkout:${{ github.sha }} applications/checkout-api
       - name: Reject high and critical container vulnerabilities
         run: trivy image --severity HIGH,CRITICAL --exit-code 1 sentinelsre-checkout:${{ github.sha }}
 

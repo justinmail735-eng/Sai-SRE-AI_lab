@@ -134,7 +134,8 @@ jobs:
           config: platform/kind/cluster.yaml
       - name: Build and load checkout image
         run: |
-          docker build -t local-checkout-api:latest applications/checkout-api
+          python3 scripts/retry_command.py --attempts 3 --base-delay 5 -- \
+            docker build -t local-checkout-api:latest applications/checkout-api
           kind load docker-image local-checkout-api:latest --name sentinelsre
       - name: Install hardened Helm release
         run: |
