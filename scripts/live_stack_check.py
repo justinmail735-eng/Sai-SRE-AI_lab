@@ -6,7 +6,6 @@ from __future__ import annotations
 import json
 import sys
 import time
-import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -17,16 +16,16 @@ def fetch_json(url: str, method: str = "GET") -> object:
         return json.load(response)
 
 
-def retry(label: str, check, attempts: int = 20, delay: float = 1.0) -> None:
+def retry(label: str, check, attempts: int = 20, delay: float = 1.0, *, sleeper=time.sleep) -> None:
     last_error: Exception | None = None
     for _ in range(attempts):
         try:
             if check():
                 print(f"PASS {label}")
                 return
-        except (KeyError, TypeError, ValueError, urllib.error.URLError) as exc:
+        except (KeyError, TypeError, ValueError, OSError) as exc:
             last_error = exc
-        time.sleep(delay)
+        sleeper(delay)
     detail = f": {last_error}" if last_error else ""
     raise RuntimeError(f"{label} did not become ready{detail}")
 
