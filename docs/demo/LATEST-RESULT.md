@@ -5,7 +5,7 @@ The completed release run on 2026-08-15 passed **12/12 checks** in approximately
 
 | Capability | Result |
 | --- | --- |
-| Python unit and behavior tests | PASS — 187 tests |
+| Python unit and behavior tests | PASS — 200 tests as of 2026-08-20 |
 | Continuous reliability contracts | PASS |
 | AWS and Azure Terraform | PASS — 3 mocked plans |
 | GitOps and admission policy | PASS |

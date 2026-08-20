@@ -20,6 +20,7 @@ test("server-renders the verified SentinelSRE portfolio", async () => {
   const html = await response.text();
   assert.match(html, /Reliability engineering, with receipts/);
   assert.match(html, /12 \/ 12 showcase gates passed/);
+  assert.match(html, />200<\/strong><small>Python behavior tests/);
   assert.match(html, /AWS EKS/);
   assert.match(html, /Azure AKS/);
   assert.match(html, /2\.443s/);

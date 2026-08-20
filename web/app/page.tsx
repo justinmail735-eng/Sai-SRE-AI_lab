@@ -56,7 +56,7 @@ export default function Home() {
         <header><div><p className="eyebrow">VERIFIED ENTERPRISE RELIABILITY LAB</p><h1>Reliability engineering, with receipts.</h1><p className="sub">A runnable workload, governed agents, multi-cloud infrastructure, and measured recovery—built as one reproducible system.</p></div><div className="status"><span />12 / 12 showcase gates passed</div></header>
 
         <div className="stats" id="evidence">
-          <article><p>TEST SUITE</p><strong>187</strong><small>Python behavior tests</small></article>
+          <article><p>TEST SUITE</p><strong>200</strong><small>Python behavior tests</small></article>
           <article><p>CLOUD FOUNDATIONS</p><strong>2</strong><small>EKS + AKS validated</small></article>
           <article><p>POD RECOVERY</p><strong>2.443s</strong><small>2/2 ready after deletion</small></article>
           <article><p>HIGH / CRITICAL</p><strong>0</strong><small>repository + image scan</small></article>
