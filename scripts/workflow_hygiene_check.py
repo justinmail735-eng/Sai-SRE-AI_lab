@@ -64,8 +64,44 @@ def jobs_without_timeouts(workflows: Path) -> list[str]:
     return findings
 
 
+def artifact_uploads_without_retention(workflows: Path) -> list[str]:
+    findings: list[str] = []
+    for workflow in sorted(workflows.glob("*.y*ml")):
+        lines = workflow.read_text().splitlines()
+        for index, line in enumerate(lines):
+            if "uses: actions/upload-artifact@" not in line:
+                continue
+            step_indent = len(line) - len(line.lstrip())
+            end = index + 1
+            while end < len(lines):
+                candidate = lines[end]
+                candidate_indent = len(candidate) - len(candidate.lstrip())
+                if candidate.strip().startswith("- ") and candidate_indent <= step_indent:
+                    break
+                end += 1
+            retention = next(
+                (
+                    int(match.group(1))
+                    for candidate in lines[index:end]
+                    if (match := re.fullmatch(r"\s+retention-days:\s+([1-9][0-9]*)", candidate))
+                ),
+                None,
+            )
+            if retention is None or retention > 90:
+                findings.append(
+                    f"{workflow.relative_to(workflows.parent.parent)}:{index + 1}: "
+                    "artifact upload must define retention-days between 1 and 90"
+                )
+    return findings
+
+
 def main() -> int:
-    findings = outdated_actions(WORKFLOWS) + unpinned_actions(WORKFLOWS) + jobs_without_timeouts(WORKFLOWS)
+    findings = (
+        outdated_actions(WORKFLOWS)
+        + unpinned_actions(WORKFLOWS)
+        + jobs_without_timeouts(WORKFLOWS)
+        + artifact_uploads_without_retention(WORKFLOWS)
+    )
     if findings:
         print("FAIL workflow-supply-chain-hygiene")
         print("\n".join(findings))

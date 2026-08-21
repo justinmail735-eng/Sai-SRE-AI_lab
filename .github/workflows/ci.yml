@@ -154,6 +154,14 @@ jobs:
             --acknowledge DELETE-ONE-LOCAL-CHECKOUT-POD \
             --output build/k8s-chaos-result.json
           python3 scripts/k8s_runtime_check.py
+      - name: Preserve resilience experiment evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sentinelsre-k8s-chaos-${{ github.run_id }}
+          path: build/k8s-chaos-result.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Preserve cluster diagnostics
         if: failure()
         run: |

@@ -41,6 +41,7 @@ jobs:
           name: sentinelsre-source-sbom
           path: sentinelsre-sbom.cdx.json
           if-no-files-found: error
+          retention-days: 30
 
   container-scan:
     runs-on: ubuntu-latest

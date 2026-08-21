@@ -2,7 +2,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.workflow_hygiene_check import jobs_without_timeouts, outdated_actions, unpinned_actions
+from scripts.workflow_hygiene_check import (
+    artifact_uploads_without_retention,
+    jobs_without_timeouts,
+    outdated_actions,
+    unpinned_actions,
+)
 
 
 class WorkflowHygieneCheckTests(unittest.TestCase):
@@ -17,6 +22,10 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
     def test_repository_jobs_have_execution_budgets(self):
         root = Path(__file__).resolve().parents[1]
         self.assertEqual(jobs_without_timeouts(root / ".github" / "workflows"), [])
+
+    def test_repository_artifacts_have_explicit_retention(self):
+        root = Path(__file__).resolve().parents[1]
+        self.assertEqual(artifact_uploads_without_retention(root / ".github" / "workflows"), [])
 
     def test_deprecated_first_party_action_is_reported_with_location(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -52,3 +61,17 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
         self.assertEqual(len(findings), 1)
         self.assertIn("job test", findings[0])
         self.assertIn("positive timeout-minutes", findings[0])
+
+    def test_artifact_without_retention_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflows = Path(directory) / ".github" / "workflows"
+            workflows.mkdir(parents=True)
+            (workflows / "evidence.yml").write_text(
+                "jobs:\n  evidence:\n    timeout-minutes: 5\n    steps:\n"
+                "      - uses: actions/upload-artifact@0123456789012345678901234567890123456789\n"
+                "        with:\n          path: evidence.json\n"
+            )
+            findings = artifact_uploads_without_retention(workflows)
+
+        self.assertEqual(len(findings), 1)
+        self.assertIn("retention-days between 1 and 90", findings[0])
