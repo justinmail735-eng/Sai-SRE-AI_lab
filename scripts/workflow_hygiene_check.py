@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / ".github" / "workflows"
 MINIMUM_MAJORS = {"checkout": 5, "setup-node": 5}
 ACTION_PATTERN = re.compile(r"actions/(checkout|setup-node)@v(\d+)")
-USE_PATTERN = re.compile(r"^\s*-\s+uses:\s+([^\s@]+)@([^\s#]+)")
+USE_PATTERN = re.compile(r"^\s*(?:-\s+)?uses:\s+([^\s@]+)@([^\s#]+)")
 COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
 
 
@@ -38,6 +38,29 @@ def unpinned_actions(workflows: Path) -> list[str]:
                 findings.append(
                     f"{workflow.relative_to(workflows.parent.parent)}:{line_number}: "
                     f"{match.group(1)}@{match.group(2)} must use an immutable 40-character commit SHA"
+                )
+    return findings
+
+
+def checkouts_with_persisted_credentials(workflows: Path) -> list[str]:
+    findings: list[str] = []
+    for workflow in sorted(workflows.glob("*.y*ml")):
+        lines = workflow.read_text().splitlines()
+        for index, line in enumerate(lines):
+            if "uses: actions/checkout@" not in line:
+                continue
+            step_indent = len(line) - len(line.lstrip())
+            end = index + 1
+            while end < len(lines):
+                candidate = lines[end]
+                candidate_indent = len(candidate) - len(candidate.lstrip())
+                if candidate.strip().startswith("- ") and candidate_indent <= step_indent:
+                    break
+                end += 1
+            if not any(re.fullmatch(r"\s+persist-credentials:\s+false", item) for item in lines[index:end]):
+                findings.append(
+                    f"{workflow.relative_to(workflows.parent.parent)}:{index + 1}: "
+                    "actions/checkout must set persist-credentials: false"
                 )
     return findings
 
@@ -99,6 +122,7 @@ def main() -> int:
     findings = (
         outdated_actions(WORKFLOWS)
         + unpinned_actions(WORKFLOWS)
+        + checkouts_with_persisted_credentials(WORKFLOWS)
         + jobs_without_timeouts(WORKFLOWS)
         + artifact_uploads_without_retention(WORKFLOWS)
     )
