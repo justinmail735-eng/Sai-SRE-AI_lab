@@ -65,6 +65,31 @@ def checkouts_with_persisted_credentials(workflows: Path) -> list[str]:
     return findings
 
 
+def workflows_without_concurrency(workflows: Path) -> list[str]:
+    findings: list[str] = []
+    for workflow in sorted(workflows.glob("*.y*ml")):
+        lines = workflow.read_text().splitlines()
+        jobs_start = next((index for index, line in enumerate(lines) if line == "jobs:"), len(lines))
+        preamble = lines[:jobs_start]
+        concurrency_start = next(
+            (index for index, line in enumerate(preamble) if line == "concurrency:"),
+            None,
+        )
+        valid = False
+        if concurrency_start is not None:
+            block = preamble[concurrency_start + 1:]
+            valid = (
+                any(re.fullmatch(r"  group:\s+.+", line) for line in block)
+                and any(re.fullmatch(r"  cancel-in-progress:\s+.+", line) for line in block)
+            )
+        if not valid:
+            findings.append(
+                f"{workflow.relative_to(workflows.parent.parent)}: workflow must define "
+                "a concurrency group and cancel-in-progress policy"
+            )
+    return findings
+
+
 def jobs_without_timeouts(workflows: Path) -> list[str]:
     findings: list[str] = []
     for workflow in sorted(workflows.glob("*.y*ml")):
@@ -123,6 +148,7 @@ def main() -> int:
         outdated_actions(WORKFLOWS)
         + unpinned_actions(WORKFLOWS)
         + checkouts_with_persisted_credentials(WORKFLOWS)
+        + workflows_without_concurrency(WORKFLOWS)
         + jobs_without_timeouts(WORKFLOWS)
         + artifact_uploads_without_retention(WORKFLOWS)
     )

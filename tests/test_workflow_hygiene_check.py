@@ -8,6 +8,7 @@ from scripts.workflow_hygiene_check import (
     jobs_without_timeouts,
     outdated_actions,
     unpinned_actions,
+    workflows_without_concurrency,
 )
 
 
@@ -23,6 +24,10 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
     def test_repository_checkouts_do_not_persist_credentials(self):
         root = Path(__file__).resolve().parents[1]
         self.assertEqual(checkouts_with_persisted_credentials(root / ".github" / "workflows"), [])
+
+    def test_repository_workflows_control_concurrency(self):
+        root = Path(__file__).resolve().parents[1]
+        self.assertEqual(workflows_without_concurrency(root / ".github" / "workflows"), [])
 
     def test_repository_jobs_have_execution_budgets(self):
         root = Path(__file__).resolve().parents[1]
@@ -78,6 +83,18 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
 
         self.assertEqual(len(findings), 1)
         self.assertIn("persist-credentials: false", findings[0])
+
+    def test_workflow_without_concurrency_policy_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflows = Path(directory) / ".github" / "workflows"
+            workflows.mkdir(parents=True)
+            (workflows / "ci.yml").write_text(
+                "name: ci\non: push\njobs:\n  test:\n    timeout-minutes: 5\n    steps:\n      - run: tests\n"
+            )
+            findings = workflows_without_concurrency(workflows)
+
+        self.assertEqual(len(findings), 1)
+        self.assertIn("concurrency group", findings[0])
 
     def test_job_without_timeout_is_reported(self):
         with tempfile.TemporaryDirectory() as directory:
