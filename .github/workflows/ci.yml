@@ -118,8 +118,19 @@ jobs:
       - name: Preserve service diagnostics
         if: failure()
         run: |
-          docker compose -f observability/local/docker-compose.yml ps
-          docker compose -f observability/local/docker-compose.yml logs --no-color --tail=200
+          mkdir -p build/diagnostics/observability
+          docker compose -f observability/local/docker-compose.yml ps \
+            | tee build/diagnostics/observability/compose-ps.txt
+          docker compose -f observability/local/docker-compose.yml logs --no-color --tail=200 \
+            | tee build/diagnostics/observability/compose-logs.txt
+      - name: Upload service failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sentinelsre-observability-failure-${{ github.run_id }}
+          path: build/diagnostics/observability
+          if-no-files-found: warn
+          retention-days: 7
       - name: Stop reliability lab
         if: always()
         run: |
@@ -183,5 +194,16 @@ jobs:
       - name: Preserve cluster diagnostics
         if: failure()
         run: |
-          kubectl get all,networkpolicy,poddisruptionbudget -n sentinelsre -o wide
-          kubectl get events -n sentinelsre --sort-by=.lastTimestamp
+          mkdir -p build/diagnostics/kubernetes
+          kubectl get all,networkpolicy,poddisruptionbudget -n sentinelsre -o wide \
+            | tee build/diagnostics/kubernetes/resources.txt
+          kubectl get events -n sentinelsre --sort-by=.lastTimestamp \
+            | tee build/diagnostics/kubernetes/events.txt
+      - name: Upload cluster failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sentinelsre-kubernetes-failure-${{ github.run_id }}
+          path: build/diagnostics/kubernetes
+          if-no-files-found: warn
+          retention-days: 7
