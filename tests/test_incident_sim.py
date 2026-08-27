@@ -38,6 +38,7 @@ class IncidentSimBasicTests(unittest.TestCase):
         r1 = run_sim("--fault-type", "latency_spike", "--seed", "42", "--output", "json")
         r2 = run_sim("--fault-type", "latency_spike", "--seed", "42", "--output", "json")
         self.assertEqual(r1.stdout, r2.stdout)
+        self.assertEqual(json.loads(r1.stdout)["start_time"], "2026-01-01T00:00:42Z")
 
     def test_different_seeds_differ(self):
         r1 = run_sim("--fault-type", "error_rate", "--seed", "1", "--output", "json")

@@ -35,6 +35,9 @@ FAULT_TYPES = ("latency_spike", "error_rate", "dependency_timeout", "cascade")
 
 SEVERITY_LEVELS = ("P1", "P2", "P3", "P4")
 
+DETERMINISTIC_EPOCH = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+SECONDS_PER_YEAR = 365 * 24 * 60 * 60
+
 # Default fault → severity mapping when not explicitly set
 FAULT_DEFAULT_SEVERITY: dict[str, str] = {
     "latency_spike": "P3",
@@ -266,7 +269,15 @@ def generate(
     effective_seed = seed if seed is not None else random.randint(0, 2**31)
     rng = random.Random(effective_seed)
 
-    ref = reference_time or datetime.datetime.now(datetime.timezone.utc)
+    if reference_time is not None:
+        ref = reference_time
+    elif seed is not None:
+        # Seeded simulations are reproducible artifacts, including timestamps.
+        ref = DETERMINISTIC_EPOCH + datetime.timedelta(
+            seconds=effective_seed % SECONDS_PER_YEAR
+        )
+    else:
+        ref = datetime.datetime.now(datetime.timezone.utc)
     if ref.tzinfo is None:
         ref = ref.replace(tzinfo=datetime.timezone.utc)
     else:
