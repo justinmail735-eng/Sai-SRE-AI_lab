@@ -33,7 +33,7 @@ jobs:
       - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
           version: v0.74.0
-      - uses: anchore/sbom-action/download-syft@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
+      - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
       - name: Reject vulnerable dependencies, IaC risks, and secrets
         run: trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --exit-code 1 .
       - name: Enforce npm advisory policy and expiring risk acceptances
@@ -42,7 +42,7 @@ jobs:
           python3 scripts/npm_audit_check.py
       - name: Generate CycloneDX software bill of materials
         run: syft dir:. --source-name sentinelsre --source-version "${GITHUB_SHA}" -o cyclonedx-json=sentinelsre-sbom.cdx.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sentinelsre-source-sbom
           path: sentinelsre-sbom.cdx.json
