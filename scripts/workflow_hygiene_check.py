@@ -112,6 +112,19 @@ def jobs_without_timeouts(workflows: Path) -> list[str]:
     return findings
 
 
+def jobs_with_mutable_runner_labels(workflows: Path) -> list[str]:
+    findings: list[str] = []
+    for workflow in sorted(workflows.glob("*.y*ml")):
+        for line_number, line in enumerate(workflow.read_text().splitlines(), start=1):
+            match = re.fullmatch(r"\s+runs-on:\s+([^\s#]+)", line)
+            if match and match.group(1).endswith("-latest"):
+                findings.append(
+                    f"{workflow.relative_to(workflows.parent.parent)}:{line_number}: "
+                    f"runner label {match.group(1)} must pin an explicit OS version"
+                )
+    return findings
+
+
 def artifact_uploads_without_retention(workflows: Path) -> list[str]:
     findings: list[str] = []
     for workflow in sorted(workflows.glob("*.y*ml")):
@@ -150,6 +163,7 @@ def main() -> int:
         + checkouts_with_persisted_credentials(WORKFLOWS)
         + workflows_without_concurrency(WORKFLOWS)
         + jobs_without_timeouts(WORKFLOWS)
+        + jobs_with_mutable_runner_labels(WORKFLOWS)
         + artifact_uploads_without_retention(WORKFLOWS)
     )
     if findings:

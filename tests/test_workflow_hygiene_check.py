@@ -5,6 +5,7 @@ from pathlib import Path
 from scripts.workflow_hygiene_check import (
     artifact_uploads_without_retention,
     checkouts_with_persisted_credentials,
+    jobs_with_mutable_runner_labels,
     jobs_without_timeouts,
     outdated_actions,
     unpinned_actions,
@@ -32,6 +33,10 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
     def test_repository_jobs_have_execution_budgets(self):
         root = Path(__file__).resolve().parents[1]
         self.assertEqual(jobs_without_timeouts(root / ".github" / "workflows"), [])
+
+    def test_repository_jobs_pin_runner_versions(self):
+        root = Path(__file__).resolve().parents[1]
+        self.assertEqual(jobs_with_mutable_runner_labels(root / ".github" / "workflows"), [])
 
     def test_repository_artifacts_have_explicit_retention(self):
         root = Path(__file__).resolve().parents[1]
@@ -108,6 +113,19 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
         self.assertEqual(len(findings), 1)
         self.assertIn("job test", findings[0])
         self.assertIn("positive timeout-minutes", findings[0])
+
+    def test_mutable_runner_label_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflows = Path(directory) / ".github" / "workflows"
+            workflows.mkdir(parents=True)
+            (workflows / "ci.yml").write_text(
+                "jobs:\n  test:\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n"
+            )
+            findings = jobs_with_mutable_runner_labels(workflows)
+
+        self.assertEqual(len(findings), 1)
+        self.assertIn("ci.yml:3", findings[0])
+        self.assertIn("pin an explicit OS version", findings[0])
 
     def test_artifact_without_retention_is_reported(self):
         with tempfile.TemporaryDirectory() as directory:
