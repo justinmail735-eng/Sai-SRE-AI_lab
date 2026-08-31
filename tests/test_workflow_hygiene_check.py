@@ -8,6 +8,7 @@ from scripts.workflow_hygiene_check import (
     jobs_with_mutable_runner_labels,
     jobs_without_timeouts,
     outdated_actions,
+    security_workflows_without_schedule,
     unpinned_actions,
     workflows_without_concurrency,
 )
@@ -29,6 +30,13 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
     def test_repository_workflows_control_concurrency(self):
         root = Path(__file__).resolve().parents[1]
         self.assertEqual(workflows_without_concurrency(root / ".github" / "workflows"), [])
+
+    def test_repository_supply_chain_scans_recur(self):
+        root = Path(__file__).resolve().parents[1]
+        self.assertEqual(
+            security_workflows_without_schedule(root / ".github" / "workflows"),
+            [],
+        )
 
     def test_repository_jobs_have_execution_budgets(self):
         root = Path(__file__).resolve().parents[1]
@@ -100,6 +108,18 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
 
         self.assertEqual(len(findings), 1)
         self.assertIn("concurrency group", findings[0])
+
+    def test_supply_chain_workflow_without_schedule_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflows = Path(directory) / ".github" / "workflows"
+            workflows.mkdir(parents=True)
+            (workflows / "supply-chain.yml").write_text(
+                "name: supply-chain\non:\n  push:\njobs:\n  scan:\n"
+            )
+            findings = security_workflows_without_schedule(workflows)
+
+        self.assertEqual(len(findings), 1)
+        self.assertIn("recurring cron scan", findings[0])
 
     def test_job_without_timeout_is_reported(self):
         with tempfile.TemporaryDirectory() as directory:

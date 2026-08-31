@@ -6,6 +6,8 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "43 3 * * *"
 
 permissions:
   contents: read

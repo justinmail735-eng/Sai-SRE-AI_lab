@@ -90,6 +90,28 @@ def workflows_without_concurrency(workflows: Path) -> list[str]:
     return findings
 
 
+def security_workflows_without_schedule(workflows: Path) -> list[str]:
+    findings: list[str] = []
+    for workflow in sorted(workflows.glob("*supply-chain*.y*ml")):
+        lines = workflow.read_text().splitlines()
+        jobs_start = next((index for index, line in enumerate(lines) if line == "jobs:"), len(lines))
+        preamble = lines[:jobs_start]
+        schedule_start = next(
+            (index for index, line in enumerate(preamble) if re.fullmatch(r"  schedule:", line)),
+            None,
+        )
+        scheduled = schedule_start is not None and any(
+            re.fullmatch(r'    - cron:\s+"[^\"]+"', line)
+            for line in preamble[schedule_start + 1:]
+        )
+        if not scheduled:
+            findings.append(
+                f"{workflow.relative_to(workflows.parent.parent)}: supply-chain workflow "
+                "must define a recurring cron scan"
+            )
+    return findings
+
+
 def jobs_without_timeouts(workflows: Path) -> list[str]:
     findings: list[str] = []
     for workflow in sorted(workflows.glob("*.y*ml")):
@@ -162,6 +184,7 @@ def main() -> int:
         + unpinned_actions(WORKFLOWS)
         + checkouts_with_persisted_credentials(WORKFLOWS)
         + workflows_without_concurrency(WORKFLOWS)
+        + security_workflows_without_schedule(WORKFLOWS)
         + jobs_without_timeouts(WORKFLOWS)
         + jobs_with_mutable_runner_labels(WORKFLOWS)
         + artifact_uploads_without_retention(WORKFLOWS)
