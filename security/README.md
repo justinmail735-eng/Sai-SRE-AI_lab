@@ -12,13 +12,12 @@ configuration, and the built container pass automated gates.
    using GitHub's short-lived OIDC identity.
 5. The included Kyverno policy fails closed and admits only images signed by
    tagged executions of this repository's supply-chain workflow.
+6. Workflow policy keeps the default GitHub token read-only; publishing grants
+   package and OIDC permissions only to the release job that requires them.
 
-The hosted portfolio's build tool currently has two upstream `image-size`
-denial-of-service advisories with no patched release. They are not silently
-ignored: an expiring, owner-bound exception records that the package is
-transitive, absent from the production dependency tree, and has no untrusted
-image input in this site. The gate fails if the advisory set changes, the
-dependency becomes direct/runtime, or the acceptance expires.
+Any temporary npm risk acceptance must be expiring, owner-bound, and limited to
+an exact advisory set. The gate fails when those constraints drift. There are
+currently no accepted npm advisories.
 
 Run the credential-free local gate with `make security-check`. Signature
 verification happens after a tagged image is published; it is intentionally not

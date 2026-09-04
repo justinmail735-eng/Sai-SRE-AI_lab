@@ -90,6 +90,38 @@ def workflows_without_concurrency(workflows: Path) -> list[str]:
     return findings
 
 
+def workflows_with_excessive_default_permissions(workflows: Path) -> list[str]:
+    """Reject broad workflow-level tokens; jobs may request scoped privileges."""
+    findings: list[str] = []
+    for workflow in sorted(workflows.glob("*.y*ml")):
+        lines = workflow.read_text().splitlines()
+        jobs_start = next((index for index, line in enumerate(lines) if line == "jobs:"), len(lines))
+        preamble = lines[:jobs_start]
+        permissions_start = next(
+            (index for index, line in enumerate(preamble) if line == "permissions:"),
+            None,
+        )
+        valid = False
+        if permissions_start is not None:
+            permissions_end = next(
+                (
+                    index
+                    for index in range(permissions_start + 1, len(preamble))
+                    if preamble[index] and not preamble[index].startswith(" ")
+                ),
+                len(preamble),
+            )
+            block = preamble[permissions_start + 1:permissions_end]
+            entries = [line.strip() for line in block if re.fullmatch(r"  [A-Za-z-]+:\s+\S+", line)]
+            valid = entries == ["contents: read"]
+        if not valid:
+            findings.append(
+                f"{workflow.relative_to(workflows.parent.parent)}: workflow-level permissions "
+                "must be exactly contents: read; grant additional access only per job"
+            )
+    return findings
+
+
 def security_workflows_without_schedule(workflows: Path) -> list[str]:
     findings: list[str] = []
     for workflow in sorted(workflows.glob("*supply-chain*.y*ml")):
@@ -184,6 +216,7 @@ def main() -> int:
         + unpinned_actions(WORKFLOWS)
         + checkouts_with_persisted_credentials(WORKFLOWS)
         + workflows_without_concurrency(WORKFLOWS)
+        + workflows_with_excessive_default_permissions(WORKFLOWS)
         + security_workflows_without_schedule(WORKFLOWS)
         + jobs_without_timeouts(WORKFLOWS)
         + jobs_with_mutable_runner_labels(WORKFLOWS)

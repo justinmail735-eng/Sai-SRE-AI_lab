@@ -11,6 +11,7 @@ from scripts.workflow_hygiene_check import (
     security_workflows_without_schedule,
     unpinned_actions,
     workflows_without_concurrency,
+    workflows_with_excessive_default_permissions,
 )
 
 
@@ -30,6 +31,13 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
     def test_repository_workflows_control_concurrency(self):
         root = Path(__file__).resolve().parents[1]
         self.assertEqual(workflows_without_concurrency(root / ".github" / "workflows"), [])
+
+    def test_repository_workflows_default_to_read_only_tokens(self):
+        root = Path(__file__).resolve().parents[1]
+        self.assertEqual(
+            workflows_with_excessive_default_permissions(root / ".github" / "workflows"),
+            [],
+        )
 
     def test_repository_supply_chain_scans_recur(self):
         root = Path(__file__).resolve().parents[1]
@@ -108,6 +116,28 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
 
         self.assertEqual(len(findings), 1)
         self.assertIn("concurrency group", findings[0])
+
+    def test_workflow_level_write_permission_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflows = Path(directory) / ".github" / "workflows"
+            workflows.mkdir(parents=True)
+            (workflows / "release.yml").write_text(
+                "name: release\npermissions:\n  contents: write\njobs:\n  publish:\n"
+            )
+            findings = workflows_with_excessive_default_permissions(workflows)
+
+        self.assertEqual(len(findings), 1)
+        self.assertIn("exactly contents: read", findings[0])
+
+    def test_missing_workflow_permissions_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflows = Path(directory) / ".github" / "workflows"
+            workflows.mkdir(parents=True)
+            (workflows / "ci.yml").write_text("name: ci\njobs:\n  test:\n")
+            findings = workflows_with_excessive_default_permissions(workflows)
+
+        self.assertEqual(len(findings), 1)
+        self.assertIn("per job", findings[0])
 
     def test_supply_chain_workflow_without_schedule_is_reported(self):
         with tempfile.TemporaryDirectory() as directory:
