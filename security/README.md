@@ -14,6 +14,8 @@ configuration, and the built container pass automated gates.
    tagged executions of this repository's supply-chain workflow.
 6. Workflow policy keeps the default GitHub token read-only; publishing grants
    package and OIDC permissions only to the release job that requires them.
+7. Container policy requires Alpine images to install current OS security fixes
+   without retaining a package-index cache before the image is scanned.
 
 Any temporary npm risk acceptance must be expiring, owner-bound, and limited to
 an exact advisory set. The gate fails when those constraints drift. There are

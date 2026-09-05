@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject mutable external base images in repository Dockerfiles."""
+"""Enforce immutable and patched external bases in repository Dockerfiles."""
 
 from __future__ import annotations
 
@@ -37,8 +37,30 @@ def mutable_container_bases(root: Path) -> list[str]:
     return findings
 
 
+def alpine_images_without_package_upgrade(root: Path) -> list[str]:
+    findings: list[str] = []
+    for dockerfile in sorted(root.rglob("Dockerfile")):
+        if ".git" in dockerfile.parts:
+            continue
+        lines = dockerfile.read_text().splitlines()
+        alpine_lines = [
+            line_number
+            for line_number, line in enumerate(lines, start=1)
+            if (match := FROM_PATTERN.fullmatch(line))
+            and "alpine" in match.group("image").split("@", 1)[0].lower()
+        ]
+        if alpine_lines and not any(
+            re.search(r"\bapk\s+upgrade\s+--no-cache\b", line) for line in lines
+        ):
+            findings.append(
+                f"{dockerfile.relative_to(root)}:{alpine_lines[0]}: Alpine image must run "
+                "apk upgrade --no-cache so fixed OS packages replace vulnerable base layers"
+            )
+    return findings
+
+
 def main() -> int:
-    findings = mutable_container_bases(ROOT)
+    findings = mutable_container_bases(ROOT) + alpine_images_without_package_upgrade(ROOT)
     if findings:
         print("FAIL immutable-container-bases")
         print("\n".join(findings))
