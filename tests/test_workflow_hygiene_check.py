@@ -58,6 +58,17 @@ class WorkflowHygieneCheckTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         self.assertEqual(artifact_uploads_without_retention(root / ".github" / "workflows"), [])
 
+    def test_kind_tool_downloads_are_retried_and_checksum_verified(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text()
+        prime = workflow.index("Prime verified Kubernetes tool downloads with retries")
+        kind_action = workflow.index("uses: helm/kind-action@")
+        setup = workflow[prime:kind_action]
+
+        self.assertGreaterEqual(setup.count("scripts/retry_command.py"), 4)
+        self.assertGreaterEqual(setup.count("sha256sum --check"), 2)
+        self.assertLess(prime, kind_action)
+
     def test_deprecated_first_party_action_is_reported_with_location(self):
         with tempfile.TemporaryDirectory() as directory:
             workflows = Path(directory) / ".github" / "workflows"

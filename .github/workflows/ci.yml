@@ -160,8 +160,40 @@ jobs:
         with:
           persist-credentials: false
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+      - name: Prime verified Kubernetes tool downloads with retries
+        env:
+          KIND_VERSION: v0.31.0
+          KUBECTL_VERSION: v1.35.0
+        run: |
+          tool_arch=amd64
+          download_dir="$(mktemp -d)"
+          trap 'rm -rf "${download_dir}"' EXIT
+
+          python3 scripts/retry_command.py --attempts 3 --base-delay 2 -- \
+            curl -fsSLo "${download_dir}/kind" \
+            "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-${tool_arch}"
+          python3 scripts/retry_command.py --attempts 3 --base-delay 2 -- \
+            curl -fsSLo "${download_dir}/kind.sha256" \
+            "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-${tool_arch}.sha256sum"
+          kind_digest="$(awk '{print $1}' "${download_dir}/kind.sha256")"
+          echo "${kind_digest}  ${download_dir}/kind" | sha256sum --check
+          install -D -m 0755 "${download_dir}/kind" \
+            "${RUNNER_TOOL_CACHE}/kind/${KIND_VERSION}/${tool_arch}/kind/bin/kind"
+
+          python3 scripts/retry_command.py --attempts 3 --base-delay 2 -- \
+            curl -fsSLo "${download_dir}/kubectl" \
+            "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${tool_arch}/kubectl"
+          python3 scripts/retry_command.py --attempts 3 --base-delay 2 -- \
+            curl -fsSLo "${download_dir}/kubectl.sha256" \
+            "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${tool_arch}/kubectl.sha256"
+          kubectl_digest="$(cat "${download_dir}/kubectl.sha256")"
+          echo "${kubectl_digest}  ${download_dir}/kubectl" | sha256sum --check
+          install -D -m 0755 "${download_dir}/kubectl" \
+            "${RUNNER_TOOL_CACHE}/kind/${KIND_VERSION}/${tool_arch}/kubectl/bin/kubectl"
       - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
         with:
+          version: v0.31.0
+          kubectl_version: v1.35.0
           cluster_name: sentinelsre
           config: platform/kind/cluster.yaml
       - name: Build and load checkout image
