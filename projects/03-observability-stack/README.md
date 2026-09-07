@@ -8,6 +8,8 @@ a versioned service specification:
 - service ownership and runbook routing;
 - deterministic generation and drift validation;
 - an auditable agent result containing evidence, risk, and validation outcomes.
+- a live checkout synthetic that validates response semantics and the 500 ms
+  latency objective before accepting the telemetry path as healthy.
 
 The repository check runs on every push, every pull request, manual dispatch, and
 every six hours. It fails when generated observability drifts from its source

@@ -9,11 +9,27 @@ import time
 import urllib.parse
 import urllib.request
 
+CHECKOUT_LATENCY_SLO_MS = 500.0
+
 
 def fetch_json(url: str, method: str = "GET") -> object:
     request = urllib.request.Request(url, method=method)
     with urllib.request.urlopen(request, timeout=5) as response:
         return json.load(response)
+
+
+def valid_checkout_response(payload: object, max_duration_ms: float = CHECKOUT_LATENCY_SLO_MS) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    duration = payload.get("duration_ms")
+    return (
+        payload.get("status") == "accepted"
+        and payload.get("service") == "checkout-api"
+        and payload.get("fault_mode") == "none"
+        and isinstance(duration, (int, float))
+        and not isinstance(duration, bool)
+        and 0 <= float(duration) <= max_duration_ms
+    )
 
 
 def retry(label: str, check, attempts: int = 20, delay: float = 1.0, *, sleeper=time.sleep) -> None:
@@ -43,8 +59,13 @@ def main() -> int:
             "checkout health",
             lambda: fetch_json("http://localhost:8080/healthz")["status"] == "healthy",
         )
-        for _ in range(10):
-            fetch_json("http://localhost:8080/checkout")
+        for probe_number in range(1, 11):
+            payload = fetch_json("http://localhost:8080/checkout")
+            if not valid_checkout_response(payload):
+                raise RuntimeError(
+                    f"checkout synthetic probe {probe_number} violated response or latency SLO"
+                )
+        print("PASS checkout synthetic response and latency SLO")
 
         retry("OpenTelemetry metrics in Prometheus", lambda: prometheus_value("sum(http_server_requests_total)") >= 10)
         retry(
