@@ -70,9 +70,13 @@ class PostmortemTests(unittest.TestCase):
         self.assertEqual(result["status"], "resolved")
         self.assertIn("No production users", result["impact"])
         self.assertEqual(result["evidence"]["request_digest"], action.digest)
+        synthetic_action = result["action_items"][0]
+        self.assertEqual(synthetic_action["status"], "completed")
+        self.assertIn("live_stack_check.py", synthetic_action["evidence"])
         rendered = markdown(result)
         self.assertIn("## Root cause", rendered)
         self.assertIn("## Action items", rendered)
+        self.assertIn("| Owner | Action | Status | Evidence |", rendered)
         self.assertIn("blameless", rendered)
 
     def test_tampered_audit_is_rejected(self):

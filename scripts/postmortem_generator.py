@@ -77,12 +77,17 @@ def build_postmortem(investigation: dict[str, Any], request: ActionRequest, audi
             "The approved adapter restored service and verified both fault state and health.",
         ],
         "improvements": [
-            "Add an external synthetic availability probe so a green process-health endpoint cannot hide checkout failure.",
+            "Maintain the checkout synthetic availability and latency probe so a green process-health endpoint cannot hide checkout failure.",
             "Export agent audit events to immutable cloud storage for production-grade retention.",
             "Replace demo identities and the local approval secret with enterprise identity and KMS-backed signing.",
         ],
         "action_items": [
-            {"owner": "commerce-sre", "action": "Add checkout-path synthetic probing to the SLO signal.", "status": "planned"},
+            {
+                "owner": "commerce-sre",
+                "action": "Add checkout-path synthetic probing to the SLO signal.",
+                "status": "completed",
+                "evidence": "scripts/live_stack_check.py; CI live-observability-smoke",
+            },
             {"owner": "platform-sre", "action": "Design immutable audit export for AWS and Azure.", "status": "planned"},
             {"owner": "security-platform", "action": "Integrate workforce identity with approval verification.", "status": "planned"},
         ],
@@ -128,8 +133,16 @@ def markdown(postmortem: dict[str, Any]) -> str:
     lines.extend(f"- {item}" for item in postmortem["what_went_well"])
     lines.extend(["", "## Improvements", ""])
     lines.extend(f"- {item}" for item in postmortem["improvements"])
-    lines.extend(["", "## Action items", "", "| Owner | Action | Status |", "| --- | --- | --- |"])
-    lines.extend(f"| {escape(item['owner'])} | {escape(item['action'])} | {escape(item['status'])} |" for item in postmortem["action_items"])
+    lines.extend([
+        "", "## Action items", "",
+        "| Owner | Action | Status | Evidence |",
+        "| --- | --- | --- | --- |",
+    ])
+    lines.extend(
+        f"| {escape(item['owner'])} | {escape(item['action'])} | "
+        f"{escape(item['status'])} | {escape(item.get('evidence', '-'))} |"
+        for item in postmortem["action_items"]
+    )
     evidence = postmortem["evidence"]
     lines.extend([
         "", "## Evidence integrity", "",

@@ -2,8 +2,9 @@
   "action_items": [
     {
       "action": "Add checkout-path synthetic probing to the SLO signal.",
+      "evidence": "scripts/live_stack_check.py; CI live-observability-smoke",
       "owner": "commerce-sre",
-      "status": "planned"
+      "status": "completed"
     },
     {
       "action": "Design immutable audit export for AWS and Azure.",
@@ -31,7 +32,7 @@
   },
   "impact": "Local synthetic checkout requests returned HTTP 503. No production users or cloud resources were involved.",
   "improvements": [
-    "Add an external synthetic availability probe so a green process-health endpoint cannot hide checkout failure.",
+    "Maintain the checkout synthetic availability and latency probe so a green process-health endpoint cannot hide checkout failure.",
     "Export agent audit events to immutable cloud storage for production-grade retention.",
     "Replace demo identities and the local approval secret with enterprise identity and KMS-backed signing."
   ],

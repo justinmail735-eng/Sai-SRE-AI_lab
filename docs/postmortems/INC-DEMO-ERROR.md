@@ -46,17 +46,17 @@ checkout fault mode set to none
 
 ## Improvements
 
-- Add an external synthetic availability probe so a green process-health endpoint cannot hide checkout failure.
+- Maintain the checkout synthetic availability and latency probe so a green process-health endpoint cannot hide checkout failure.
 - Export agent audit events to immutable cloud storage for production-grade retention.
 - Replace demo identities and the local approval secret with enterprise identity and KMS-backed signing.
 
 ## Action items
 
-| Owner | Action | Status |
-| --- | --- | --- |
-| commerce-sre | Add checkout-path synthetic probing to the SLO signal. | planned |
-| platform-sre | Design immutable audit export for AWS and Azure. | planned |
-| security-platform | Integrate workforce identity with approval verification. | planned |
+| Owner | Action | Status | Evidence |
+| --- | --- | --- | --- |
+| commerce-sre | Add checkout-path synthetic probing to the SLO signal. | completed | scripts/live_stack_check.py; CI live-observability-smoke |
+| platform-sre | Design immutable audit export for AWS and Azure. | planned | - |
+| security-platform | Integrate workforce identity with approval verification. | planned | - |
 
 ## Evidence integrity
 
