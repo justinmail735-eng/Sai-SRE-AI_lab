@@ -141,6 +141,21 @@ class AuditTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "invalid"):
                 audit.verify()
 
+    def test_executed_request_digest_cannot_be_replayed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audit = AuditLog(Path(directory) / "audit.jsonl")
+            digest = request().digest
+            audit.append({"outcome": "succeeded", "request_digest": digest})
+            with self.assertRaisesRegex(ValueError, "already been executed"):
+                audit.reject_replay(digest)
+
+    def test_new_request_digest_is_not_a_replay(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audit = AuditLog(Path(directory) / "audit.jsonl")
+            audit.append({"outcome": "succeeded", "request_digest": request().digest})
+            newer = request(created_at="2026-08-14T12:01:00Z")
+            audit.reject_replay(newer.digest)
+
 
 class AdapterTests(unittest.TestCase):
     def test_scale_adapter_uses_argument_array_and_scoped_target(self):

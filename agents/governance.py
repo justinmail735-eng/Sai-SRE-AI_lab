@@ -244,6 +244,12 @@ class AuditLog:
                 raise ValueError(f"audit chain is invalid at record {index}")
             previous = actual_hash
 
+    def reject_replay(self, request_digest: str) -> None:
+        """Reject a request digest that already reached the mutation boundary."""
+        self.verify()
+        if any(record.get("request_digest") == request_digest for record in self.records()):
+            raise ValueError("action request has already been executed")
+
     def append(self, event: dict[str, Any]) -> dict[str, Any]:
         self.verify()
         records = self.records()

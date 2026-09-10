@@ -125,6 +125,7 @@ def execute(args: argparse.Namespace) -> int:
     IdentityRegistry.load(args.identities).require_approver(approval.approver, policy, request.environment)
     verify_approval(request, approval, os.environ.get("SENTINELSRE_APPROVAL_KEY", ""))
     audit = AuditLog(args.audit_log)
+    audit.reject_replay(request.digest)
     started_at = utc_now().isoformat().replace("+00:00", "Z")
     try:
         output = execute_action(request)

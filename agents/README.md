@@ -56,6 +56,7 @@ An apply must pass all of these independent checks:
 - active approver identity with an authorized role;
 - separation of requester and approver;
 - unexpired HMAC approval bound to the complete request digest;
+- one-time request execution enforced against the verified audit chain;
 - fixed execution adapters without arbitrary shell input;
 - post-action verification and a hash-chained audit record.
 
