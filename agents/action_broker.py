@@ -125,32 +125,33 @@ def execute(args: argparse.Namespace) -> int:
     IdentityRegistry.load(args.identities).require_approver(approval.approver, policy, request.environment)
     verify_approval(request, approval, os.environ.get("SENTINELSRE_APPROVAL_KEY", ""))
     audit = AuditLog(args.audit_log)
-    audit.reject_replay(request.digest)
-    started_at = utc_now().isoformat().replace("+00:00", "Z")
-    try:
-        output = execute_action(request)
-        verification = verify_effect(request)
-        outcome = "succeeded"
-    except Exception as exc:
-        output = str(exc)
-        verification = []
-        outcome = "failed"
-    record = audit.append({
-        "api_version": "sentinelsre.io/v1",
-        "kind": "ActionAuditEvent",
-        "request_id": request.request_id,
-        "request_digest": request.digest,
-        "incident_id": request.incident_id,
-        "action": request.action,
-        "target": request.target,
-        "requester": request.requester,
-        "approver": approval.approver,
-        "started_at": started_at,
-        "completed_at": utc_now().isoformat().replace("+00:00", "Z"),
-        "outcome": outcome,
-        "output": output,
-        "verification": verification,
-    })
+    with audit.execution_transaction():
+        audit.reject_replay(request.digest)
+        started_at = utc_now().isoformat().replace("+00:00", "Z")
+        try:
+            output = execute_action(request)
+            verification = verify_effect(request)
+            outcome = "succeeded"
+        except Exception as exc:
+            output = str(exc)
+            verification = []
+            outcome = "failed"
+        record = audit.append({
+            "api_version": "sentinelsre.io/v1",
+            "kind": "ActionAuditEvent",
+            "request_id": request.request_id,
+            "request_digest": request.digest,
+            "incident_id": request.incident_id,
+            "action": request.action,
+            "target": request.target,
+            "requester": request.requester,
+            "approver": approval.approver,
+            "started_at": started_at,
+            "completed_at": utc_now().isoformat().replace("+00:00", "Z"),
+            "outcome": outcome,
+            "output": output,
+            "verification": verification,
+        })
     print(json.dumps(record, indent=2, sort_keys=True))
     return 0 if outcome == "succeeded" else 1
 

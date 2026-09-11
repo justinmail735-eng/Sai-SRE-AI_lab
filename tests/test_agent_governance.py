@@ -2,6 +2,8 @@ import datetime as dt
 import importlib.util
 import json
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import Mock
@@ -155,6 +157,25 @@ class AuditTests(unittest.TestCase):
             audit.append({"outcome": "succeeded", "request_digest": request().digest})
             newer = request(created_at="2026-08-14T12:01:00Z")
             audit.reject_replay(newer.digest)
+
+    def test_execution_transaction_serializes_brokers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audit = AuditLog(Path(directory) / "audit.jsonl")
+            acquired = threading.Event()
+
+            def wait_for_transaction():
+                with audit.execution_transaction():
+                    acquired.set()
+
+            with audit.execution_transaction():
+                contender = threading.Thread(target=wait_for_transaction)
+                contender.start()
+                time.sleep(0.05)
+                self.assertFalse(acquired.is_set())
+
+            contender.join(timeout=1)
+            self.assertFalse(contender.is_alive())
+            self.assertTrue(acquired.is_set())
 
 
 class AdapterTests(unittest.TestCase):

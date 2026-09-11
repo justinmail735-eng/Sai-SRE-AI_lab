@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import datetime as dt
+import fcntl
 import hashlib
 import hmac
 import json
 import re
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 def canonical(value: Any) -> str:
@@ -249,6 +251,18 @@ class AuditLog:
         self.verify()
         if any(record.get("request_digest") == request_digest for record in self.records()):
             raise ValueError("action request has already been executed")
+
+    @contextmanager
+    def execution_transaction(self) -> Iterator[None]:
+        """Serialize replay checks, mutation, verification, and audit append."""
+        lock_path = self.path.with_suffix(f"{self.path.suffix}.lock")
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with lock_path.open("a", encoding="utf-8") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock, fcntl.LOCK_UN)
 
     def append(self, event: dict[str, Any]) -> dict[str, Any]:
         self.verify()
