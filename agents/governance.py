@@ -14,6 +14,10 @@ from pathlib import Path
 from typing import Any, Iterator
 
 
+MAX_REQUEST_AGE = dt.timedelta(hours=1)
+MAX_CLOCK_SKEW = dt.timedelta(seconds=30)
+
+
 def canonical(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
@@ -173,6 +177,15 @@ class IdentityRegistry:
             raise ValueError(f"approver '{identity}' lacks an authorized role for {environment}")
 
 
+def validate_request_freshness(request: ActionRequest, at: dt.datetime) -> None:
+    effective_at = at.astimezone(dt.timezone.utc)
+    created_at = parse_time(request.created_at)
+    if created_at > effective_at + MAX_CLOCK_SKEW:
+        raise ValueError("action request was created in the future")
+    if effective_at - created_at > MAX_REQUEST_AGE:
+        raise ValueError("action request is stale")
+
+
 def create_approval(
     request: ActionRequest,
     approver: str,
@@ -187,6 +200,7 @@ def create_approval(
     if not approver.strip() or approver == request.requester:
         raise ValueError("approver must be a distinct, non-empty human identity")
     issued = (now or utc_now()).astimezone(dt.timezone.utc).replace(microsecond=0)
+    validate_request_freshness(request, issued)
     unsigned = {
         "api_version": "sentinelsre.io/v1",
         "kind": "Approval",
@@ -218,10 +232,12 @@ def verify_approval(
     expected = hmac.new(secret.encode(), canonical(approval.unsigned()).encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, approval.signature):
         raise ValueError("approval signature is invalid")
+    issued_at = parse_time(approval.issued_at)
+    validate_request_freshness(request, issued_at)
     effective_now = (now or utc_now()).astimezone(dt.timezone.utc)
     if effective_now > parse_time(approval.expires_at):
         raise ValueError("approval has expired")
-    if effective_now < parse_time(approval.issued_at) - dt.timedelta(seconds=30):
+    if effective_now < issued_at - MAX_CLOCK_SKEW:
         raise ValueError("approval was issued in the future")
 
 

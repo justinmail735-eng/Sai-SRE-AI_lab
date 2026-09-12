@@ -55,6 +55,7 @@ An apply must pass all of these independent checks:
 - environment execution policy and blast-radius limits;
 - active approver identity with an authorized role;
 - separation of requester and approver;
+- request freshness limited to one hour with bounded clock-skew tolerance;
 - unexpired HMAC approval bound to the complete request digest;
 - one-time request execution enforced by a serialized, verified audit transaction;
 - fixed execution adapters without arbitrary shell input;
