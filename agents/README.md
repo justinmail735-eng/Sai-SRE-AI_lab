@@ -52,6 +52,7 @@ The **Action Broker** is the only mutation boundary. Its default is dry-run.
 An apply must pass all of these independent checks:
 
 - exact action, target, environment, requester, and parameter allowlists;
+- strict typed request and approval contracts that reject malformed input;
 - environment execution policy and blast-radius limits;
 - active approver identity with an authorized role;
 - separation of requester and approver;

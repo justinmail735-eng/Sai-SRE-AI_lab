@@ -48,6 +48,26 @@ def request(**overrides):
 
 
 class ApprovalTests(unittest.TestCase):
+    def test_action_request_requires_object_contract(self):
+        with self.assertRaisesRegex(ValueError, "JSON object"):
+            ActionRequest.from_dict([])
+
+    def test_action_request_rejects_invalid_collection_types(self):
+        with self.assertRaisesRegex(ValueError, "parameters must be an object"):
+            request(parameters=[])
+        with self.assertRaisesRegex(ValueError, "evidence must contain"):
+            request(evidence="fault mode is errors")
+        with self.assertRaisesRegex(ValueError, "verification must contain"):
+            request(verification=[""])
+
+    def test_approval_rejects_extra_fields_and_malformed_signature(self):
+        value = create_approval(request(), "sai@example.com", SECRET, now=NOW).to_dict()
+        with self.assertRaisesRegex(ValueError, "fields must be exactly"):
+            Approval.from_dict({**value, "bypass": True})
+        value["signature"] = "not-a-digest"
+        with self.assertRaisesRegex(ValueError, "lowercase SHA-256"):
+            Approval.from_dict(value)
+
     def test_valid_approval_is_bound_to_request(self):
         action = request()
         approval = create_approval(action, "sai@example.com", SECRET, now=NOW)

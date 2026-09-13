@@ -66,16 +66,27 @@ class ActionRequest:
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "ActionRequest":
+        if not isinstance(value, dict):
+            raise ValueError("action request must be a JSON object")
         expected = {field.name for field in cls.__dataclass_fields__.values()}
         if set(value) != expected:
             raise ValueError(f"action request fields must be exactly: {', '.join(sorted(expected))}")
+        string_fields = expected - {"parameters", "evidence", "verification"}
+        if any(not isinstance(value[name], str) or not value[name].strip() for name in string_fields):
+            raise ValueError("action request string fields must be non-empty strings")
+        if not isinstance(value["parameters"], dict):
+            raise ValueError("action request parameters must be an object")
+        for name in ("evidence", "verification"):
+            items = value[name]
+            if not isinstance(items, list) or not items or any(
+                not isinstance(item, str) or not item.strip() for item in items
+            ):
+                raise ValueError(f"action request {name} must contain non-empty strings")
         request = cls(**value)
         if request.api_version != "sentinelsre.io/v1" or request.kind != "ActionRequest":
             raise ValueError("unsupported action request contract")
         if request.risk not in {"low", "medium", "high", "critical"}:
             raise ValueError("invalid risk classification")
-        if not request.evidence or not request.verification or not request.rollback.strip():
-            raise ValueError("evidence, verification, and rollback are mandatory")
         parse_time(request.created_at)
         return request
 
@@ -102,6 +113,15 @@ class Approval:
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "Approval":
+        if not isinstance(value, dict):
+            raise ValueError("approval must be a JSON object")
+        expected = {field.name for field in cls.__dataclass_fields__.values()}
+        if set(value) != expected:
+            raise ValueError(f"approval fields must be exactly: {', '.join(sorted(expected))}")
+        if any(not isinstance(value[name], str) or not value[name].strip() for name in expected):
+            raise ValueError("approval fields must be non-empty strings")
+        if not re.fullmatch(r"[0-9a-f]{64}", value["signature"]):
+            raise ValueError("approval signature must be a lowercase SHA-256 digest")
         return cls(**value)
 
 
