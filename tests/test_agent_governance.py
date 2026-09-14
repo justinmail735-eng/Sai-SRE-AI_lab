@@ -1,4 +1,6 @@
 import datetime as dt
+import hashlib
+import hmac
 import importlib.util
 import json
 import tempfile
@@ -17,6 +19,7 @@ from agents.governance import (
     GovernancePolicy,
     IdentityRegistry,
     create_approval,
+    canonical,
     validate_request_freshness,
     verify_approval,
 )
@@ -45,6 +48,17 @@ def request(**overrides):
     }
     values.update(overrides)
     return ActionRequest.from_dict(values)
+
+
+def signed_approval(**overrides):
+    value = create_approval(request(), "sai@example.com", SECRET, now=NOW).to_dict()
+    value.update(overrides)
+    unsigned = dict(value)
+    unsigned.pop("signature")
+    value["signature"] = hmac.new(
+        SECRET.encode(), canonical(unsigned).encode(), hashlib.sha256,
+    ).hexdigest()
+    return Approval.from_dict(value)
 
 
 class ApprovalTests(unittest.TestCase):
@@ -91,6 +105,16 @@ class ApprovalTests(unittest.TestCase):
         approval = create_approval(action, "sai@example.com", SECRET, now=NOW, ttl_minutes=1)
         with self.assertRaisesRegex(ValueError, "expired"):
             verify_approval(action, approval, SECRET, now=NOW + dt.timedelta(minutes=2))
+
+    def test_verifier_rejects_oversized_signed_approval_ttl(self):
+        approval = signed_approval(expires_at="2026-08-14T13:00:01Z")
+        with self.assertRaisesRegex(ValueError, "between 1 and 60 minutes"):
+            verify_approval(request(), approval, SECRET, now=NOW)
+
+    def test_verifier_rejects_invalid_signed_approval_chronology(self):
+        approval = signed_approval(expires_at="2026-08-14T11:59:59Z")
+        with self.assertRaisesRegex(ValueError, "between 1 and 60 minutes"):
+            verify_approval(request(), approval, SECRET, now=NOW)
 
     def test_self_approval_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "distinct"):

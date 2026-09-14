@@ -16,6 +16,8 @@ from typing import Any, Iterator
 
 MAX_REQUEST_AGE = dt.timedelta(hours=1)
 MAX_CLOCK_SKEW = dt.timedelta(seconds=30)
+MIN_APPROVAL_TTL = dt.timedelta(minutes=1)
+MAX_APPROVAL_TTL = dt.timedelta(minutes=60)
 
 
 def canonical(value: Any) -> str:
@@ -253,9 +255,12 @@ def verify_approval(
     if not hmac.compare_digest(expected, approval.signature):
         raise ValueError("approval signature is invalid")
     issued_at = parse_time(approval.issued_at)
+    expires_at = parse_time(approval.expires_at)
+    if not MIN_APPROVAL_TTL <= expires_at - issued_at <= MAX_APPROVAL_TTL:
+        raise ValueError("approval validity must be between 1 and 60 minutes")
     validate_request_freshness(request, issued_at)
     effective_now = (now or utc_now()).astimezone(dt.timezone.utc)
-    if effective_now > parse_time(approval.expires_at):
+    if effective_now > expires_at:
         raise ValueError("approval has expired")
     if effective_now < issued_at - MAX_CLOCK_SKEW:
         raise ValueError("approval was issued in the future")
