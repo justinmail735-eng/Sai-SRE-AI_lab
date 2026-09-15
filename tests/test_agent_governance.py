@@ -8,7 +8,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -183,6 +183,14 @@ class PolicyTests(unittest.TestCase):
 
 
 class AuditTests(unittest.TestCase):
+    def test_append_syncs_audit_event_to_disk(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audit = AuditLog(Path(directory) / "audit.jsonl")
+            with patch("agents.governance.os.fsync") as sync:
+                audit.append({"outcome": "succeeded", "request_id": "ACT-1"})
+            sync.assert_called_once()
+            audit.verify()
+
     def test_append_and_verify_hash_chain(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "audit.jsonl"

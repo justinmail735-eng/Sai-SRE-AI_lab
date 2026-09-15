@@ -7,6 +7,7 @@ import fcntl
 import hashlib
 import hmac
 import json
+import os
 import re
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -315,4 +316,5 @@ class AuditLog:
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(canonical(record) + "\n")
             handle.flush()
+            os.fsync(handle.fileno())
         return record
