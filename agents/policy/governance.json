@@ -13,7 +13,7 @@
       "environments": ["local"],
       "target_pattern": "^checkout-api$",
       "parameters": {
-        "base_url": {"required": true, "enum": ["http://127.0.0.1:8080", "http://localhost:8080"]}
+        "base_url": {"required": true, "type": "string", "enum": ["http://127.0.0.1:8080", "http://localhost:8080"]}
       }
     },
     "kubernetes.restart": {
@@ -31,7 +31,7 @@
       "environments": ["local"],
       "target_pattern": "^sentinelsre/checkout-checkout-api$",
       "parameters": {
-        "replicas": {"required": true, "minimum": 2, "maximum": 6}
+        "replicas": {"required": true, "type": "integer", "minimum": 2, "maximum": 6}
       }
     },
     "terraform.plan": {

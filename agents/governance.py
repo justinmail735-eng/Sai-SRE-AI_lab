@@ -167,6 +167,13 @@ class GovernancePolicy:
                     raise ValueError(f"parameter '{name}' is required")
                 continue
             value = request.parameters[name]
+            expected_type = constraint.get("type")
+            if expected_type == "integer" and (not isinstance(value, int) or isinstance(value, bool)):
+                raise ValueError(f"parameter '{name}' must be an integer")
+            if expected_type == "string" and not isinstance(value, str):
+                raise ValueError(f"parameter '{name}' must be a string")
+            if expected_type not in {None, "integer", "string"}:
+                raise ValueError(f"parameter '{name}' has an unsupported policy type")
             if "enum" in constraint and value not in constraint["enum"]:
                 raise ValueError(f"parameter '{name}' is outside its allowlist")
             if "minimum" in constraint and value < constraint["minimum"]:

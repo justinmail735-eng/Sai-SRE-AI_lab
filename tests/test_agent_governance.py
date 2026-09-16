@@ -172,6 +172,18 @@ class PolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "maximum"):
             self.policy.validate(proposed, apply=True)
 
+    def test_scale_requires_integer_replicas(self):
+        for invalid in (2.5, True, "3"):
+            with self.subTest(replicas=invalid), self.assertRaisesRegex(ValueError, "must be an integer"):
+                self.policy.validate(request(
+                    requester="IncidentCommanderAgent", action="kubernetes.scale",
+                    target="sentinelsre/checkout-checkout-api", parameters={"replicas": invalid}, risk="high",
+                ), apply=True)
+
+    def test_recovery_requires_string_base_url(self):
+        with self.assertRaisesRegex(ValueError, "must be a string"):
+            self.policy.validate(request(parameters={"base_url": 8080}), apply=True)
+
     def test_authorized_dummy_incident_commander_can_approve_local(self):
         self.identities.require_approver("sai.demo", self.policy, "local")
 
