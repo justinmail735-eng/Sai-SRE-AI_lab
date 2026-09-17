@@ -268,6 +268,7 @@ def verify_approval(
         raise ValueError("approval validity must be between 1 and 60 minutes")
     validate_request_freshness(request, issued_at)
     effective_now = (now or utc_now()).astimezone(dt.timezone.utc)
+    validate_request_freshness(request, effective_now)
     if effective_now > expires_at:
         raise ValueError("approval has expired")
     if effective_now < issued_at - MAX_CLOCK_SKEW:

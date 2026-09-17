@@ -125,6 +125,12 @@ class ApprovalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "stale"):
             create_approval(stale, "sai@example.com", SECRET, now=NOW)
 
+    def test_request_that_ages_out_after_approval_cannot_execute(self):
+        action = request(created_at="2026-08-14T11:00:00Z")
+        approval = create_approval(action, "sai@example.com", SECRET, now=NOW)
+        with self.assertRaisesRegex(ValueError, "stale"):
+            verify_approval(action, approval, SECRET, now=NOW + dt.timedelta(seconds=1))
+
     def test_future_request_is_rejected_beyond_clock_skew(self):
         future = request(created_at="2026-08-14T12:00:31Z")
         with self.assertRaisesRegex(ValueError, "future"):
