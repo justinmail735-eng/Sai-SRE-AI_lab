@@ -251,6 +251,8 @@ def verify_approval(
     secret: str,
     now: dt.datetime | None = None,
 ) -> None:
+    if len(secret) < 32:
+        raise ValueError("approval secret must contain at least 32 characters")
     if approval.api_version != "sentinelsre.io/v1" or approval.kind != "Approval":
         raise ValueError("unsupported approval contract")
     if approval.decision != "approved":

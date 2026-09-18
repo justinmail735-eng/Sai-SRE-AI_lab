@@ -100,6 +100,13 @@ class ApprovalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "signature"):
             verify_approval(action, Approval.from_dict(value), SECRET, now=NOW)
 
+    def test_verifier_rejects_missing_or_weak_approval_secret(self):
+        action = request()
+        approval = create_approval(action, "sai@example.com", SECRET, now=NOW)
+        for weak_secret in ("", "too-short"):
+            with self.subTest(secret=weak_secret), self.assertRaisesRegex(ValueError, "at least 32"):
+                verify_approval(action, approval, weak_secret, now=NOW)
+
     def test_expired_approval_is_rejected(self):
         action = request()
         approval = create_approval(action, "sai@example.com", SECRET, now=NOW, ttl_minutes=1)
