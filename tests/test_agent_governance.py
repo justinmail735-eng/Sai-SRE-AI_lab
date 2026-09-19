@@ -113,6 +113,12 @@ class ApprovalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "expired"):
             verify_approval(action, approval, SECRET, now=NOW + dt.timedelta(minutes=2))
 
+    def test_approval_expires_at_exact_expiration_instant(self):
+        action = request()
+        approval = create_approval(action, "sai@example.com", SECRET, now=NOW, ttl_minutes=1)
+        with self.assertRaisesRegex(ValueError, "expired"):
+            verify_approval(action, approval, SECRET, now=NOW + dt.timedelta(minutes=1))
+
     def test_verifier_rejects_oversized_signed_approval_ttl(self):
         approval = signed_approval(expires_at="2026-08-14T13:00:01Z")
         with self.assertRaisesRegex(ValueError, "between 1 and 60 minutes"):
