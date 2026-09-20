@@ -144,6 +144,12 @@ class GovernancePolicy:
         action = self.value.get("actions", {}).get(request.action)
         if not action:
             raise ValueError(f"action '{request.action}' is not allowlisted")
+        draft_only = environment.get("draft_only", True)
+        executable = action.get("executable", False)
+        if not isinstance(draft_only, bool):
+            raise ValueError(f"draft_only policy for '{request.environment}' must be a boolean")
+        if not isinstance(executable, bool):
+            raise ValueError(f"executable policy for '{request.action}' must be a boolean")
         if request.requester not in action.get("requesters", []):
             raise ValueError(f"requester '{request.requester}' cannot propose '{request.action}'")
         if request.risk != action.get("risk"):
@@ -152,9 +158,9 @@ class GovernancePolicy:
             raise ValueError(f"action '{request.action}' is prohibited in {request.environment}")
         if not re.fullmatch(action["target_pattern"], request.target):
             raise ValueError(f"target '{request.target}' is outside the policy scope")
-        if apply and environment.get("draft_only", True):
+        if apply and draft_only:
             raise ValueError(f"{request.environment} is draft-only; execution is prohibited")
-        if apply and not action.get("executable", False):
+        if apply and not executable:
             raise ValueError(f"action '{request.action}' cannot be executed")
 
         allowed_parameters = set(action.get("parameters", {}))

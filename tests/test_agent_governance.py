@@ -174,6 +174,19 @@ class PolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot propose"):
             self.policy.validate(request(requester="UnknownAgent"), apply=True)
 
+    def test_security_critical_policy_flags_require_booleans(self):
+        policy_path = ROOT / "agents/policy/governance.json"
+        for section, name, value in (
+            ("environments", "local", 0),
+            ("actions", "fault.recover", "false"),
+        ):
+            with self.subTest(section=section, name=name):
+                policy = json.loads(policy_path.read_text())
+                field = "draft_only" if section == "environments" else "executable"
+                policy[section][name][field] = value
+                with self.assertRaisesRegex(ValueError, "must be a boolean"):
+                    GovernancePolicy(policy).validate(request(), apply=True)
+
     def test_production_execution_is_denied(self):
         proposed = request(
             requester="PlatformEngineerAgent", environment="production", action="terraform.plan",
