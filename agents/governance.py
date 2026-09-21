@@ -190,9 +190,14 @@ class GovernancePolicy:
 
     def approver_roles(self, environment: str) -> set[str]:
         try:
-            return set(self.value["environments"][environment]["approver_roles"])
+            roles = self.value["environments"][environment]["approver_roles"]
         except KeyError as exc:
             raise ValueError(f"no approver roles configured for '{environment}'") from exc
+        if not isinstance(roles, list) or not roles or any(
+            not isinstance(role, str) or not role.strip() for role in roles
+        ):
+            raise ValueError(f"approver roles for '{environment}' must be a non-empty string list")
+        return set(roles)
 
 
 class IdentityRegistry:
@@ -207,9 +212,17 @@ class IdentityRegistry:
         record = self.value.get("identities", {}).get(identity)
         if not record:
             raise ValueError(f"approver '{identity}' is not in the identity registry")
-        if not record.get("active", False):
+        active = record.get("active", False)
+        roles = record.get("roles", [])
+        if not isinstance(active, bool):
+            raise ValueError(f"approver '{identity}' active flag must be a boolean")
+        if not isinstance(roles, list) or not roles or any(
+            not isinstance(role, str) or not role.strip() for role in roles
+        ):
+            raise ValueError(f"approver '{identity}' roles must be a non-empty string list")
+        if not active:
             raise ValueError(f"approver '{identity}' is inactive")
-        if not set(record.get("roles", [])) & policy.approver_roles(environment):
+        if not set(roles) & policy.approver_roles(environment):
             raise ValueError(f"approver '{identity}' lacks an authorized role for {environment}")
 
 

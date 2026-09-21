@@ -225,6 +225,23 @@ class PolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "inactive"):
             self.identities.require_approver("former.engineer", self.policy, "local")
 
+    def test_malformed_identity_authorization_fields_fail_closed(self):
+        for field, value, message in (
+            ("active", "false", "active flag must be a boolean"),
+            ("roles", {"incident-commander": True}, "roles must be a non-empty string list"),
+        ):
+            with self.subTest(field=field):
+                registry = json.loads((ROOT / "agents/identities/demo-identities.json").read_text())
+                registry["identities"]["sai.demo"][field] = value
+                with self.assertRaisesRegex(ValueError, message):
+                    IdentityRegistry(registry).require_approver("sai.demo", self.policy, "local")
+
+    def test_malformed_policy_approver_roles_fail_closed(self):
+        policy = json.loads((ROOT / "agents/policy/governance.json").read_text())
+        policy["environments"]["local"]["approver_roles"] = {"incident-commander": True}
+        with self.assertRaisesRegex(ValueError, "non-empty string list"):
+            self.identities.require_approver("sai.demo", GovernancePolicy(policy), "local")
+
 
 class AuditTests(unittest.TestCase):
     def test_append_syncs_audit_event_to_disk(self):
