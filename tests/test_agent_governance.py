@@ -187,6 +187,18 @@ class PolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "must be a boolean"):
                     GovernancePolicy(policy).validate(request(), apply=True)
 
+    def test_action_authorization_lists_require_string_arrays(self):
+        policy_path = ROOT / "agents/policy/governance.json"
+        for field, value in (
+            ("requesters", {"IncidentInvestigatorAgent": True}),
+            ("environments", {"local": True}),
+        ):
+            with self.subTest(field=field):
+                policy = json.loads(policy_path.read_text())
+                policy["actions"]["fault.recover"][field] = value
+                with self.assertRaisesRegex(ValueError, "non-empty string list"):
+                    GovernancePolicy(policy).validate(request(), apply=True)
+
     def test_production_execution_is_denied(self):
         proposed = request(
             requester="PlatformEngineerAgent", environment="production", action="terraform.plan",

@@ -150,11 +150,20 @@ class GovernancePolicy:
             raise ValueError(f"draft_only policy for '{request.environment}' must be a boolean")
         if not isinstance(executable, bool):
             raise ValueError(f"executable policy for '{request.action}' must be a boolean")
-        if request.requester not in action.get("requesters", []):
+        requesters = action.get("requesters", [])
+        action_environments = action.get("environments", [])
+        for field, values in (("requesters", requesters), ("environments", action_environments)):
+            if not isinstance(values, list) or not values or any(
+                not isinstance(value, str) or not value.strip() for value in values
+            ):
+                raise ValueError(
+                    f"{field} policy for '{request.action}' must be a non-empty string list"
+                )
+        if request.requester not in requesters:
             raise ValueError(f"requester '{request.requester}' cannot propose '{request.action}'")
         if request.risk != action.get("risk"):
             raise ValueError(f"risk for '{request.action}' must be classified as {action.get('risk')}")
-        if request.environment not in action.get("environments", []):
+        if request.environment not in action_environments:
             raise ValueError(f"action '{request.action}' is prohibited in {request.environment}")
         if not re.fullmatch(action["target_pattern"], request.target):
             raise ValueError(f"target '{request.target}' is outside the policy scope")
