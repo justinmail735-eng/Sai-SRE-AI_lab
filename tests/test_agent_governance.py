@@ -162,6 +162,18 @@ class PolicyTests(unittest.TestCase):
     def test_allowlisted_local_recovery_can_execute(self):
         self.policy.validate(request(), apply=True)
 
+    def test_governance_policy_rejects_unsupported_contract(self):
+        policy = json.loads((ROOT / "agents/policy/governance.json").read_text())
+        policy["api_version"] = "sentinelsre.io/v2"
+        with self.assertRaisesRegex(ValueError, "unsupported governance policy contract"):
+            GovernancePolicy(policy)
+
+    def test_identity_registry_rejects_unsupported_contract(self):
+        registry = json.loads((ROOT / "agents/identities/demo-identities.json").read_text())
+        registry["kind"] = "UntrustedRegistry"
+        with self.assertRaisesRegex(ValueError, "unsupported identity registry contract"):
+            IdentityRegistry(registry)
+
     def test_arbitrary_action_is_denied(self):
         with self.assertRaisesRegex(ValueError, "not allowlisted"):
             self.policy.validate(request(action="shell.execute"), apply=True)

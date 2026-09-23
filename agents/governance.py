@@ -130,6 +130,8 @@ class Approval:
 
 class GovernancePolicy:
     def __init__(self, value: dict[str, Any]):
+        if not isinstance(value, dict) or value.get("api_version") != "sentinelsre.io/v1":
+            raise ValueError("unsupported governance policy contract")
         self.value = value
 
     @classmethod
@@ -211,6 +213,12 @@ class GovernancePolicy:
 
 class IdentityRegistry:
     def __init__(self, value: dict[str, Any]):
+        if (
+            not isinstance(value, dict)
+            or value.get("api_version") != "sentinelsre.io/v1"
+            or value.get("kind") != "IdentityRegistry"
+        ):
+            raise ValueError("unsupported identity registry contract")
         self.value = value
 
     @classmethod
