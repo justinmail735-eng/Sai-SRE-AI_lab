@@ -211,6 +211,18 @@ class PolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "non-empty string list"):
                     GovernancePolicy(policy).validate(request(), apply=True)
 
+    def test_parameter_constraint_schema_fails_closed(self):
+        policy_path = ROOT / "agents/policy/governance.json"
+        for field, value, message in (
+            ("required", "false", "must be a boolean"),
+            ("enum", {"http://127.0.0.1:8080": True}, "must be a non-empty list"),
+        ):
+            with self.subTest(field=field):
+                policy = json.loads(policy_path.read_text())
+                policy["actions"]["fault.recover"]["parameters"]["base_url"][field] = value
+                with self.assertRaisesRegex(ValueError, message):
+                    GovernancePolicy(policy).validate(request(), apply=True)
+
     def test_production_execution_is_denied(self):
         proposed = request(
             requester="PlatformEngineerAgent", environment="production", action="terraform.plan",

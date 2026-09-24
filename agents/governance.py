@@ -174,13 +174,26 @@ class GovernancePolicy:
         if apply and not executable:
             raise ValueError(f"action '{request.action}' cannot be executed")
 
-        allowed_parameters = set(action.get("parameters", {}))
+        parameters = action.get("parameters", {})
+        if not isinstance(parameters, dict) or any(
+            not isinstance(name, str) or not name.strip() or not isinstance(constraint, dict)
+            for name, constraint in parameters.items()
+        ):
+            raise ValueError(f"parameters policy for '{request.action}' must be an object")
+        allowed_parameters = set(parameters)
         unknown = set(request.parameters) - allowed_parameters
         if unknown:
             raise ValueError(f"parameters are not allowlisted: {', '.join(sorted(unknown))}")
-        for name, constraint in action.get("parameters", {}).items():
+        for name, constraint in parameters.items():
+            required = constraint.get("required", False)
+            if not isinstance(required, bool):
+                raise ValueError(f"required policy for parameter '{name}' must be a boolean")
+            if "enum" in constraint and (
+                not isinstance(constraint["enum"], list) or not constraint["enum"]
+            ):
+                raise ValueError(f"enum policy for parameter '{name}' must be a non-empty list")
             if name not in request.parameters:
-                if constraint.get("required", False):
+                if required:
                     raise ValueError(f"parameter '{name}' is required")
                 continue
             value = request.parameters[name]
