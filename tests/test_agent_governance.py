@@ -23,7 +23,7 @@ from agents.governance import (
     validate_request_freshness,
     verify_approval,
 )
-from agents.action_broker import execute_action
+from agents.action_broker import execute_action, verify_effect
 
 
 SECRET = "unit-test-approval-key-that-is-long-enough"
@@ -354,6 +354,33 @@ class AdapterTests(unittest.TestCase):
             ["kubectl", "scale", "deployment/checkout-checkout-api", "--namespace", "sentinelsre", "--replicas=3"],
             check=True, text=True, capture_output=True,
         )
+
+    def test_scale_verification_proves_requested_replicas_are_available(self):
+        proposed = request(
+            requester="IncidentCommanderAgent", action="kubernetes.scale",
+            target="sentinelsre/checkout-checkout-api", parameters={"replicas": 3}, risk="high",
+        )
+        responses = [
+            Mock(stdout="deployment successfully rolled out"),
+            Mock(stdout=json.dumps({"spec": {"replicas": 3}, "status": {"availableReplicas": 3}})),
+        ]
+        with patch("agents.action_broker.subprocess.run", side_effect=responses) as runner:
+            evidence = verify_effect(proposed)
+        self.assertIn("3 desired and 3 available", evidence[1])
+        self.assertEqual(runner.call_count, 2)
+
+    def test_scale_verification_rejects_insufficient_available_replicas(self):
+        proposed = request(
+            requester="IncidentCommanderAgent", action="kubernetes.scale",
+            target="sentinelsre/checkout-checkout-api", parameters={"replicas": 3}, risk="high",
+        )
+        responses = [
+            Mock(stdout="deployment successfully rolled out"),
+            Mock(stdout=json.dumps({"spec": {"replicas": 3}, "status": {"availableReplicas": 2}})),
+        ]
+        with patch("agents.action_broker.subprocess.run", side_effect=responses):
+            with self.assertRaisesRegex(RuntimeError, "scale verification failed"):
+                verify_effect(proposed)
 
 
 if __name__ == "__main__":

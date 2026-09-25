@@ -89,7 +89,25 @@ def verify_effect(request: ActionRequest) -> list[str]:
         ["kubectl", "rollout", "status", f"deployment/{deployment}", "--namespace", namespace, "--timeout=2m"],
         check=True, text=True, capture_output=True,
     )
-    return [result.stdout.strip()]
+    verification = [result.stdout.strip()]
+    if request.action == "kubernetes.scale":
+        expected = request.parameters["replicas"]
+        state = subprocess.run(
+            [
+                "kubectl", "get", f"deployment/{deployment}", "--namespace", namespace,
+                "--output=json",
+            ],
+            check=True, text=True, capture_output=True,
+        )
+        deployment_state = json.loads(state.stdout)
+        desired = deployment_state.get("spec", {}).get("replicas")
+        available = deployment_state.get("status", {}).get("availableReplicas", 0)
+        if desired != expected or available < expected:
+            raise RuntimeError(
+                f"scale verification failed: expected {expected}, desired {desired}, available {available}"
+            )
+        verification.append(f"deployment has {desired} desired and {available} available replicas")
+    return verification
 
 
 def approve(args: argparse.Namespace) -> int:
