@@ -28,11 +28,12 @@ def fetch(url: str) -> tuple[int, str]:
 
 
 def active_fault(metrics: str) -> str:
+    active_modes = []
     for mode in ("errors", "latency", "none"):
         pattern = rf'^sentinel_sre_fault_mode\{{[^}}]*mode="{mode}"[^}}]*\}}\s+1(?:\.0)?$'
         if re.search(pattern, metrics, flags=re.MULTILINE):
-            return mode
-    return "unknown"
+            active_modes.append(mode)
+    return active_modes[0] if len(active_modes) == 1 else "unknown"
 
 
 def investigate(base_url: str, incident_id: str, created_at: str | None = None) -> dict:

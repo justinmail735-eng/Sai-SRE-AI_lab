@@ -8,6 +8,13 @@ class IncidentInvestigatorTests(unittest.TestCase):
     def test_active_fault_reads_metric_gauge(self):
         self.assertEqual(active_fault('sentinel_sre_fault_mode{service="checkout-api",mode="latency"} 1\n'), "latency")
 
+    def test_conflicting_fault_gauges_are_ambiguous(self):
+        metrics = (
+            'sentinel_sre_fault_mode{service="checkout-api",mode="errors"} 1\n'
+            'sentinel_sre_fault_mode{service="checkout-api",mode="latency"} 1\n'
+        )
+        self.assertEqual(active_fault(metrics), "unknown")
+
     def test_investigation_proposes_recovery_from_live_evidence(self):
         responses = [
             (200, '{"status":"ok"}'),
@@ -29,6 +36,20 @@ class IncidentInvestigatorTests(unittest.TestCase):
         ]
         with patch("agents.incident_investigator.fetch", side_effect=responses):
             report = investigate("http://127.0.0.1:8080", "INC-HEALTHY", "2026-08-14T12:00:00Z")
+        self.assertIsNone(report["recommended_action"])
+
+    def test_ambiguous_fault_telemetry_produces_no_mutation(self):
+        responses = [
+            (200, '{"status":"ok"}'),
+            (503, '{"error":"injected"}'),
+            (200, (
+                'sentinel_sre_fault_mode{service="checkout-api",mode="errors"} 1\n'
+                'sentinel_sre_fault_mode{service="checkout-api",mode="latency"} 1\n'
+            )),
+        ]
+        with patch("agents.incident_investigator.fetch", side_effect=responses):
+            report = investigate("http://127.0.0.1:8080", "INC-AMBIGUOUS", "2026-08-14T12:00:00Z")
+        self.assertEqual(report["hypotheses"][0]["confidence"], 0.2)
         self.assertIsNone(report["recommended_action"])
 
 
