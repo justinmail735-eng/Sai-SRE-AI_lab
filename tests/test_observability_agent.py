@@ -126,6 +126,19 @@ class ObservabilityAgentTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("critical must exceed warning", result.stderr)
 
+    def test_rejects_non_finite_observability_thresholds(self):
+        for section, field, value in (
+            ("slo", "availability_target", float("nan")),
+            ("alerts", "warning_burn_rate", float("nan")),
+            ("alerts", "critical_burn_rate", float("inf")),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
+                spec = sample_spec()
+                spec["spec"][section][field] = value
+                result = run_agent(spec, Path(tmp) / "generated")
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("finite", result.stderr)
+
     def test_generation_is_deterministic(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

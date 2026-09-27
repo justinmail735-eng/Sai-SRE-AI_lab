@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -68,8 +69,8 @@ def validate_spec(data: dict[str, Any]) -> None:
         raise ValueError("spec.slo must be an object")
     target = float(slo.get("availability_target", 0))
     latency = int(slo.get("latency_p95_ms", 0))
-    if not 0.9 <= target < 1:
-        raise ValueError("spec.slo.availability_target must be between 0.9 and 1")
+    if not math.isfinite(target) or not 0.9 <= target < 1:
+        raise ValueError("spec.slo.availability_target must be finite and between 0.9 and 1")
     if latency <= 0:
         raise ValueError("spec.slo.latency_p95_ms must be positive")
 
@@ -78,8 +79,12 @@ def validate_spec(data: dict[str, Any]) -> None:
         raise ValueError("spec.alerts must be an object")
     warning = float(alerts.get("warning_burn_rate", 0))
     critical = float(alerts.get("critical_burn_rate", 0))
-    if warning <= 0 or critical <= warning:
-        raise ValueError("alert burn rates must be positive and critical must exceed warning")
+    if (
+        not all(math.isfinite(value) for value in (warning, critical))
+        or warning <= 0
+        or critical <= warning
+    ):
+        raise ValueError("alert burn rates must be finite, positive, and critical must exceed warning")
 
 
 def grafana_dashboard(data: dict[str, Any]) -> dict[str, Any]:
