@@ -139,6 +139,19 @@ class ObservabilityAgentTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 2)
                 self.assertIn("finite", result.stderr)
 
+    def test_rejects_coercible_non_numeric_thresholds(self):
+        for section, field, value, message in (
+            ("slo", "availability_target", "0.999", "must be a number"),
+            ("slo", "latency_p95_ms", True, "must be an integer"),
+            ("alerts", "warning_burn_rate", True, "must be numbers"),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
+                spec = sample_spec()
+                spec["spec"][section][field] = value
+                result = run_agent(spec, Path(tmp) / "generated")
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(message, result.stderr)
+
     def test_generation_is_deterministic(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

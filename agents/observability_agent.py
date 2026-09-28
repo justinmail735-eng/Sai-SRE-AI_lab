@@ -67,8 +67,13 @@ def validate_spec(data: dict[str, Any]) -> None:
     slo = spec.get("slo")
     if not isinstance(slo, dict):
         raise ValueError("spec.slo must be an object")
-    target = float(slo.get("availability_target", 0))
-    latency = int(slo.get("latency_p95_ms", 0))
+    target_value = slo.get("availability_target")
+    latency = slo.get("latency_p95_ms")
+    if not isinstance(target_value, (int, float)) or isinstance(target_value, bool):
+        raise ValueError("spec.slo.availability_target must be a number")
+    if not isinstance(latency, int) or isinstance(latency, bool):
+        raise ValueError("spec.slo.latency_p95_ms must be an integer")
+    target = float(target_value)
     if not math.isfinite(target) or not 0.9 <= target < 1:
         raise ValueError("spec.slo.availability_target must be finite and between 0.9 and 1")
     if latency <= 0:
@@ -77,8 +82,15 @@ def validate_spec(data: dict[str, Any]) -> None:
     alerts = spec.get("alerts")
     if not isinstance(alerts, dict):
         raise ValueError("spec.alerts must be an object")
-    warning = float(alerts.get("warning_burn_rate", 0))
-    critical = float(alerts.get("critical_burn_rate", 0))
+    warning_value = alerts.get("warning_burn_rate")
+    critical_value = alerts.get("critical_burn_rate")
+    if any(
+        not isinstance(value, (int, float)) or isinstance(value, bool)
+        for value in (warning_value, critical_value)
+    ):
+        raise ValueError("alert burn rates must be numbers")
+    warning = float(warning_value)
+    critical = float(critical_value)
     if (
         not all(math.isfinite(value) for value in (warning, critical))
         or warning <= 0
