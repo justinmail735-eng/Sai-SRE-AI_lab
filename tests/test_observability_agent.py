@@ -109,6 +109,22 @@ class ObservabilityAgentTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("DNS-style", result.stderr)
 
+    def test_rejects_yaml_injection_and_insecure_runbooks(self):
+        for path, value, message in (
+            (("metadata", "owner"), "commerce-sre\nseverity: critical", "single-line"),
+            (("spec", "metrics", "error_rate"), "vector(0)\nmalicious: true", "single-line"),
+            (("spec", "runbook_url"), "http://example.com/runbook", "HTTPS URL"),
+        ):
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as tmp:
+                spec = sample_spec()
+                target = spec
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = value
+                result = run_agent(spec, Path(tmp) / "generated")
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(message, result.stderr)
+
     def test_rejects_invalid_slo_target(self):
         with tempfile.TemporaryDirectory() as tmp:
             spec = sample_spec()
