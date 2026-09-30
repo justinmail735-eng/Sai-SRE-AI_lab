@@ -97,6 +97,21 @@ class PostmortemTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "identifier"):
                 load_evidence(investigation_path, audit_path)
 
+    def test_investigation_context_tampering_is_rejected(self):
+        for field, value, message in (
+            ("incident_id", "INC-FORGED", "incident identifier"),
+            ("agent", "PrivilegedAgent", "agent context"),
+            ("mode", "write-enabled", "agent context"),
+            ("hypotheses", [], "summarized hypothesis"),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                investigation_path, audit_path = self.make_files(directory)
+                payload = json.loads(investigation_path.read_text())
+                payload[field] = value
+                investigation_path.write_text(json.dumps(payload))
+                with self.assertRaisesRegex(ValueError, message):
+                    load_evidence(investigation_path, audit_path)
+
 
 if __name__ == "__main__":
     unittest.main()

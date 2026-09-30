@@ -22,8 +22,11 @@ def escape(value: Any) -> str:
 
 def load_evidence(investigation_path: Path, audit_path: Path) -> tuple[dict[str, Any], ActionRequest, dict[str, Any]]:
     investigation = json.loads(investigation_path.read_text())
-    if investigation.get("kind") != "IncidentInvestigation":
-        raise ValueError("investigation has the wrong kind")
+    if (
+        investigation.get("api_version") != "sentinelsre.io/v1"
+        or investigation.get("kind") != "IncidentInvestigation"
+    ):
+        raise ValueError("investigation has an unsupported contract")
     recommended = investigation.get("recommended_action")
     if not recommended:
         raise ValueError("investigation contains no recommended action")
@@ -32,6 +35,19 @@ def load_evidence(investigation_path: Path, audit_path: Path) -> tuple[dict[str,
     request = ActionRequest.from_dict(request_value)
     if claimed_id != request.request_id:
         raise ValueError("investigation request identifier does not match its content")
+    if investigation.get("incident_id") != request.incident_id:
+        raise ValueError("investigation incident identifier does not match its action request")
+    if investigation.get("agent") != request.requester or investigation.get("mode") != "read-only":
+        raise ValueError("investigation agent context does not match its action request")
+    hypotheses = investigation.get("hypotheses")
+    if (
+        not isinstance(hypotheses, list)
+        or not hypotheses
+        or not isinstance(hypotheses[0], dict)
+        or not isinstance(hypotheses[0].get("summary"), str)
+        or not hypotheses[0]["summary"].strip()
+    ):
+        raise ValueError("investigation must contain a summarized hypothesis")
 
     audit = AuditLog(audit_path)
     audit.verify()
