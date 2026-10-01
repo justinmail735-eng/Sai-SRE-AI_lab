@@ -79,6 +79,14 @@ class PostmortemTests(unittest.TestCase):
         self.assertIn("| Owner | Action | Status | Evidence |", rendered)
         self.assertIn("blameless", rendered)
 
+    def test_incomplete_verification_cannot_claim_resolution(self):
+        with tempfile.TemporaryDirectory() as directory:
+            investigation_path, audit_path = self.make_files(directory)
+            evidence, action, event = load_evidence(investigation_path, audit_path)
+            event["verification"] = ["health endpoint returned HTTP 200"]
+            result = build_postmortem(evidence, action, event)
+        self.assertEqual(result["status"], "unresolved")
+
     def test_tampered_audit_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             investigation_path, audit_path = self.make_files(directory)

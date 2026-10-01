@@ -15,6 +15,8 @@ sys.path.insert(0, str(ROOT))
 
 from agents.governance import ActionRequest, AuditLog
 
+RECOVERY_VERIFICATION = {"fault mode is none", "health endpoint returned HTTP 200"}
+
 
 def escape(value: Any) -> str:
     return str(value).replace("|", "\\|").replace("\n", " ")
@@ -65,7 +67,12 @@ def build_postmortem(investigation: dict[str, Any], request: ActionRequest, audi
     checkout_evidence = next((item for item in request.evidence if "GET /checkout" in item), "synthetic checkout failed")
     status_match = re.search(r"HTTP (\d{3})", checkout_evidence)
     status = status_match.group(1) if status_match else "unknown"
-    resolved = audit.get("outcome") == "succeeded" and bool(audit.get("verification"))
+    verification = audit.get("verification", [])
+    resolved = (
+        audit.get("outcome") == "succeeded"
+        and isinstance(verification, list)
+        and RECOVERY_VERIFICATION <= set(verification)
+    )
     return {
         "api_version": "sentinelsre.io/v1",
         "kind": "IncidentPostmortem",
