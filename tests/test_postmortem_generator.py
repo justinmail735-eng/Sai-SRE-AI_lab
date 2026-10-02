@@ -45,21 +45,28 @@ def investigation(action):
 
 
 class PostmortemTests(unittest.TestCase):
-    def make_files(self, directory):
+    def make_files(self, directory, **event_overrides):
         action = request()
         investigation_path = Path(directory) / "investigation.json"
         investigation_path.write_text(json.dumps(investigation(action)))
         audit_path = Path(directory) / "audit.jsonl"
-        AuditLog(audit_path).append({
+        event = {
+            "api_version": "sentinelsre.io/v1",
+            "kind": "ActionAuditEvent",
             "request_id": action.request_id,
             "request_digest": action.digest,
+            "incident_id": action.incident_id,
+            "action": action.action,
+            "target": action.target,
+            "requester": action.requester,
             "approver": "sai.demo",
             "started_at": "2026-08-14T12:01:00Z",
             "completed_at": "2026-08-14T12:01:01Z",
             "outcome": "succeeded",
             "output": "checkout fault mode set to none",
             "verification": ["fault mode is none", "health endpoint returned HTTP 200"],
-        })
+        }
+        AuditLog(audit_path).append({**event, **event_overrides})
         return investigation_path, audit_path
 
     def test_builds_resolved_evidence_linked_postmortem(self):
@@ -119,6 +126,12 @@ class PostmortemTests(unittest.TestCase):
                 investigation_path.write_text(json.dumps(payload))
                 with self.assertRaisesRegex(ValueError, message):
                     load_evidence(investigation_path, audit_path)
+
+    def test_contradictory_hash_valid_audit_context_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            investigation_path, audit_path = self.make_files(directory, target="other-service")
+            with self.assertRaisesRegex(ValueError, "audit event context"):
+                load_evidence(investigation_path, audit_path)
 
 
 if __name__ == "__main__":

@@ -59,6 +59,19 @@ def load_evidence(investigation_path: Path, audit_path: Path) -> tuple[dict[str,
     event = matching[0]
     if event.get("request_digest") != request.digest:
         raise ValueError("audit event is not bound to the investigated request")
+    if (
+        event.get("api_version") != "sentinelsre.io/v1"
+        or event.get("kind") != "ActionAuditEvent"
+    ):
+        raise ValueError("audit event has an unsupported contract")
+    expected_context = {
+        "incident_id": request.incident_id,
+        "action": request.action,
+        "target": request.target,
+        "requester": request.requester,
+    }
+    if any(event.get(field) != value for field, value in expected_context.items()):
+        raise ValueError("audit event context does not match the investigated request")
     return investigation, request, event
 
 
