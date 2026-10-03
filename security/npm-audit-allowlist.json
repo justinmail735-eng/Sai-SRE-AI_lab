@@ -1,4 +1,15 @@
 {
   "api_version": "sentinelsre.io/v1",
-  "exceptions": []
+  "exceptions": [
+    {
+      "package": "braces",
+      "advisories": [
+        "GHSA-vfj7-8cjw-p6xm"
+      ],
+      "owner": "security-platform",
+      "expires": "2026-10-10",
+      "scope": "transitive development dependencies only",
+      "rationale": "No patched braces release exists; the package is absent from the production dependency tree. Re-evaluate within seven days."
+    }
+  ]
 }

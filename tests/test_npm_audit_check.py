@@ -41,6 +41,25 @@ class NpmAuditPolicyTests(unittest.TestCase):
         self.assertEqual(failures, [])
         self.assertTrue(any("aggregate" in item for item in accepted))
 
+    def test_multi_hop_aggregates_resolve_independent_of_report_order(self):
+        payload = audit()
+        payload["vulnerabilities"] = {
+            "application": {"severity": "high", "isDirect": True, "via": ["globber"]},
+            "globber": {"severity": "high", "isDirect": False, "via": ["image-size"]},
+            **payload["vulnerabilities"],
+        }
+        accepted, failures = evaluate(payload, allowlist(), dt.date(2026, 8, 14))
+        self.assertEqual(failures, [])
+        self.assertEqual(len(accepted), 3)
+
+    def test_aggregate_chain_with_unaccepted_leaf_fails_closed(self):
+        payload = audit()
+        payload["vulnerabilities"]["application"] = {
+            "severity": "high", "isDirect": True, "via": ["unknown-package"],
+        }
+        _, failures = evaluate(payload, allowlist(), dt.date(2026, 8, 14))
+        self.assertIn("unknown-package", failures[0])
+
 
 if __name__ == "__main__":
     unittest.main()

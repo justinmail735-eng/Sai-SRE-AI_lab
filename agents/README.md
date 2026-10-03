@@ -60,7 +60,8 @@ An apply must pass all of these independent checks:
 - independently enforced 1–60 minute HMAC approval bound to the complete request digest;
 - one-time request execution enforced by a serialized, verified audit transaction;
 - fixed execution adapters without arbitrary shell input;
-- post-action verification and a synced, hash-chained audit record.
+- post-action verification and a synced, hash-chained audit record whose command
+  output is credential-redacted and size-bounded before persistence.
 
 Review a proposal without changing anything:
 

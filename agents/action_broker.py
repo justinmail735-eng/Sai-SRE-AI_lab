@@ -32,6 +32,25 @@ from agents.governance import (
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY = ROOT / "agents/policy/governance.json"
 DEFAULT_IDENTITIES = ROOT / "agents/identities/demo-identities.json"
+MAX_AUDIT_OUTPUT_CHARS = 4096
+
+AUDIT_SECRET_PATTERNS = (
+    re.compile(r"(?i)\b(authorization\s*:\s*bearer)\s+\S+"),
+    re.compile(
+        r"(?i)\b(api[_-]?key|access[_-]?key|client[_-]?secret|secret|token|password|passwd)"
+        r"(\s*[:=]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+    ),
+)
+
+
+def sanitize_audit_output(value: str) -> str:
+    """Redact common credential forms and bound command output before persistence."""
+    sanitized = AUDIT_SECRET_PATTERNS[0].sub(r"\1 [REDACTED]", value)
+    sanitized = AUDIT_SECRET_PATTERNS[1].sub(r"\1\2[REDACTED]", sanitized)
+    if len(sanitized) > MAX_AUDIT_OUTPUT_CHARS:
+        omitted = len(sanitized) - MAX_AUDIT_OUTPUT_CHARS
+        sanitized = sanitized[:MAX_AUDIT_OUTPUT_CHARS] + f"\n[TRUNCATED {omitted} CHARACTERS]"
+    return sanitized
 
 
 def load_request(path: Path) -> ActionRequest:
@@ -167,7 +186,7 @@ def execute(args: argparse.Namespace) -> int:
             "started_at": started_at,
             "completed_at": utc_now().isoformat().replace("+00:00", "Z"),
             "outcome": outcome,
-            "output": output,
+            "output": sanitize_audit_output(output),
             "verification": verification,
         })
     print(json.dumps(record, indent=2, sort_keys=True))

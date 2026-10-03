@@ -51,12 +51,26 @@ def evaluate(audit: dict[str, Any], allowlist: dict[str, Any], today: dt.date) -
         else:
             accepted.append(f"{package}: {sorted(actual)} accepted until {expiry} by {exception['owner']}")
             accepted_packages.add(package)
-    for package, finding in aggregates:
-        dependencies = set(finding.get("via", []))
-        if dependencies and dependencies <= accepted_packages:
-            accepted.append(f"{package}: aggregate finding inherited only from accepted {sorted(dependencies)}")
-        else:
-            failures.append(f"{package}: unapproved aggregate finding via {sorted(dependencies)}")
+    pending = aggregates
+    while pending:
+        unresolved: list[tuple[str, dict[str, Any]]] = []
+        for package, finding in pending:
+            dependencies = set(finding.get("via", []))
+            if dependencies and dependencies <= accepted_packages:
+                accepted.append(
+                    f"{package}: aggregate finding inherited only from accepted {sorted(dependencies)}"
+                )
+                accepted_packages.add(package)
+            else:
+                unresolved.append((package, finding))
+        if len(unresolved) == len(pending):
+            for package, finding in unresolved:
+                dependencies = set(finding.get("via", []))
+                failures.append(
+                    f"{package}: unapproved aggregate finding via {sorted(dependencies)}"
+                )
+            break
+        pending = unresolved
     return accepted, failures
 
 

@@ -23,7 +23,7 @@ from agents.governance import (
     validate_request_freshness,
     verify_approval,
 )
-from agents.action_broker import execute_action, verify_effect
+from agents.action_broker import MAX_AUDIT_OUTPUT_CHARS, execute_action, sanitize_audit_output, verify_effect
 
 
 SECRET = "unit-test-approval-key-that-is-long-enough"
@@ -343,6 +343,21 @@ class AuditTests(unittest.TestCase):
 
 
 class AdapterTests(unittest.TestCase):
+    def test_audit_output_redacts_common_credentials(self):
+        output = (
+            "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature\n"
+            "password=super-secret token: 'token-value' api_key=key-value"
+        )
+        sanitized = sanitize_audit_output(output)
+        for secret in ("eyJhbGciOiJIUzI1NiJ9", "super-secret", "token-value", "key-value"):
+            self.assertNotIn(secret, sanitized)
+        self.assertEqual(sanitized.count("[REDACTED]"), 4)
+
+    def test_audit_output_is_bounded(self):
+        sanitized = sanitize_audit_output("x" * (MAX_AUDIT_OUTPUT_CHARS + 17))
+        self.assertTrue(sanitized.startswith("x" * MAX_AUDIT_OUTPUT_CHARS))
+        self.assertTrue(sanitized.endswith("[TRUNCATED 17 CHARACTERS]"))
+
     def test_scale_adapter_uses_argument_array_and_scoped_target(self):
         runner = Mock(return_value=Mock(stdout="scaled"))
         proposed = request(
