@@ -74,21 +74,43 @@ def evaluate(audit: dict[str, Any], allowlist: dict[str, Any], today: dt.date) -
     return accepted, failures
 
 
+def production_exception_failures(
+    lockfile: dict[str, Any], allowlist: dict[str, Any]
+) -> list[str]:
+    """Reject risk-accepted packages on any production dependency path."""
+    packages = lockfile.get("packages")
+    if not isinstance(packages, dict):
+        return ["package lock has no packages map; production dependency scope is unverifiable"]
+    exceptions = {
+        item.get("package") for item in allowlist.get("exceptions", []) if isinstance(item, dict)
+    }
+    failures: list[str] = []
+    for package in sorted(name for name in exceptions if isinstance(name, str)):
+        suffix = f"node_modules/{package}"
+        production_paths = sorted(
+            path for path, metadata in packages.items()
+            if (path == suffix or path.endswith(f"/{suffix}"))
+            and (not isinstance(metadata, dict) or metadata.get("dev") is not True)
+        )
+        if production_paths:
+            failures.append(
+                f"{package}: risk-accepted package entered production dependency path(s) "
+                f"{production_paths}"
+            )
+    return failures
+
+
 def main() -> int:
     audit_process = subprocess.run(["npm", "audit", "--json"], cwd=WEB, text=True, capture_output=True)
     try:
         audit = json.loads(audit_process.stdout)
         allowlist = json.loads(ALLOWLIST.read_text())
+        lockfile = json.loads((WEB / "package-lock.json").read_text())
     except json.JSONDecodeError as exc:
-        print(f"FAIL npm audit output: {exc}", file=sys.stderr)
+        print(f"FAIL npm security input: {exc}", file=sys.stderr)
         return 1
     accepted, failures = evaluate(audit, allowlist, dt.datetime.now(dt.timezone.utc).date())
-
-    production_tree = subprocess.run(
-        ["npm", "ls", "--omit=dev", "image-size"], cwd=WEB, text=True, capture_output=True
-    )
-    if production_tree.returncode == 0 and "image-size@" in production_tree.stdout:
-        failures.append("image-size entered the production dependency tree")
+    failures.extend(production_exception_failures(lockfile, allowlist))
     for item in accepted:
         print(f"ACCEPTED {item}")
     if failures:

@@ -1,7 +1,7 @@
 import datetime as dt
 import unittest
 
-from scripts.npm_audit_check import evaluate
+from scripts.npm_audit_check import evaluate, production_exception_failures
 
 
 def audit(package="image-size", direct=False, advisories=("GHSA-one",)):
@@ -59,6 +59,30 @@ class NpmAuditPolicyTests(unittest.TestCase):
         }
         _, failures = evaluate(payload, allowlist(), dt.date(2026, 8, 14))
         self.assertIn("unknown-package", failures[0])
+
+    def test_risk_accepted_package_must_remain_dev_only(self):
+        lockfile = {"packages": {"node_modules/image-size": {"version": "1.0.0", "dev": True}}}
+        self.assertEqual(production_exception_failures(lockfile, allowlist()), [])
+        lockfile["packages"]["node_modules/image-size"].pop("dev")
+        failures = production_exception_failures(lockfile, allowlist())
+        self.assertIn("entered production dependency", failures[0])
+
+    def test_nested_production_copy_of_accepted_package_is_rejected(self):
+        lockfile = {"packages": {
+            "node_modules/image-size": {"version": "1.0.0", "dev": True},
+            "node_modules/runtime/node_modules/image-size": {"version": "1.0.0"},
+        }}
+        failures = production_exception_failures(lockfile, allowlist())
+        self.assertIn("runtime/node_modules/image-size", failures[0])
+
+    def test_missing_lockfile_packages_map_fails_closed(self):
+        failures = production_exception_failures({}, allowlist())
+        self.assertIn("unverifiable", failures[0])
+
+    def test_malformed_package_metadata_fails_closed(self):
+        lockfile = {"packages": {"node_modules/image-size": "invalid"}}
+        failures = production_exception_failures(lockfile, allowlist())
+        self.assertIn("entered production dependency", failures[0])
 
 
 if __name__ == "__main__":
