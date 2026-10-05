@@ -1,10 +1,10 @@
 import datetime as dt
 import unittest
 
-from scripts.npm_audit_check import evaluate, production_exception_failures
+from scripts.npm_audit_check import evaluate, production_exception_failures, validate_allowlist
 
 
-def audit(package="image-size", direct=False, advisories=("GHSA-one",)):
+def audit(package="image-size", direct=False, advisories=("GHSA-1111-2222-3333",)):
     return {"vulnerabilities": {package: {
         "severity": "high",
         "isDirect": direct,
@@ -13,19 +13,52 @@ def audit(package="image-size", direct=False, advisories=("GHSA-one",)):
 
 
 def allowlist(expires="2026-09-14"):
-    return {"exceptions": [{
-        "package": "image-size", "advisories": ["GHSA-one"], "owner": "security-platform", "expires": expires,
+    return {"api_version": "sentinelsre.io/v1", "exceptions": [{
+        "package": "image-size",
+        "advisories": ["GHSA-1111-2222-3333"],
+        "owner": "security-platform",
+        "expires": expires,
+        "scope": "transitive development dependencies only",
+        "rationale": "No fixed release is available.",
     }]}
 
 
 class NpmAuditPolicyTests(unittest.TestCase):
+    def test_allowlist_contract_is_strictly_validated(self):
+        self.assertEqual(validate_allowlist(allowlist()), [])
+        for field, value, message in (
+            ("owner", "", "owner must be a non-empty string"),
+            ("advisories", ["CVE-not-ghsa"], "unique GHSA identifiers"),
+            ("expires", "tomorrow", "ISO date"),
+            ("scope", "all dependencies", "scope must be"),
+        ):
+            with self.subTest(field=field):
+                policy = allowlist()
+                policy["exceptions"][0][field] = value
+                self.assertIn(message, validate_allowlist(policy)[0])
+
+    def test_duplicate_package_exceptions_are_rejected(self):
+        policy = allowlist()
+        policy["exceptions"].append(dict(policy["exceptions"][0]))
+        failures = validate_allowlist(policy)
+        self.assertTrue(any("duplicates package" in failure for failure in failures))
+
+    def test_unknown_allowlist_fields_are_rejected(self):
+        policy = allowlist()
+        policy["exceptions"][0]["bypass"] = True
+        self.assertIn("must contain exactly", validate_allowlist(policy)[0])
+
     def test_exact_unexpired_transitive_exception_is_accepted(self):
         accepted, failures = evaluate(audit(), allowlist(), dt.date(2026, 8, 14))
         self.assertEqual(len(accepted), 1)
         self.assertEqual(failures, [])
 
     def test_new_advisory_fails_closed(self):
-        _, failures = evaluate(audit(advisories=("GHSA-one", "GHSA-two")), allowlist(), dt.date(2026, 8, 14))
+        _, failures = evaluate(
+            audit(advisories=("GHSA-1111-2222-3333", "GHSA-4444-5555-6666")),
+            allowlist(),
+            dt.date(2026, 8, 14),
+        )
         self.assertIn("advisory set changed", failures[0])
 
     def test_expired_or_direct_exception_is_rejected(self):
