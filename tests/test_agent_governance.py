@@ -23,7 +23,13 @@ from agents.governance import (
     validate_request_freshness,
     verify_approval,
 )
-from agents.action_broker import MAX_AUDIT_OUTPUT_CHARS, execute_action, sanitize_audit_output, verify_effect
+from agents.action_broker import (
+    MAX_AUDIT_OUTPUT_CHARS,
+    execute_action,
+    sanitize_audit_output,
+    sanitize_audit_verification,
+    verify_effect,
+)
 
 
 SECRET = "unit-test-approval-key-that-is-long-enough"
@@ -357,6 +363,15 @@ class AdapterTests(unittest.TestCase):
         sanitized = sanitize_audit_output("x" * (MAX_AUDIT_OUTPUT_CHARS + 17))
         self.assertTrue(sanitized.startswith("x" * MAX_AUDIT_OUTPUT_CHARS))
         self.assertTrue(sanitized.endswith("[TRUNCATED 17 CHARACTERS]"))
+
+    def test_audit_verification_evidence_is_sanitized(self):
+        evidence = sanitize_audit_verification([
+            "rollout complete; token=verification-secret",
+            "x" * (MAX_AUDIT_OUTPUT_CHARS + 9),
+        ])
+        self.assertNotIn("verification-secret", evidence[0])
+        self.assertIn("token=[REDACTED]", evidence[0])
+        self.assertTrue(evidence[1].endswith("[TRUNCATED 9 CHARACTERS]"))
 
     def test_scale_adapter_uses_argument_array_and_scoped_target(self):
         runner = Mock(return_value=Mock(stdout="scaled"))

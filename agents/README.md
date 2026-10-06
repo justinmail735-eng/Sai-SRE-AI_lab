@@ -61,7 +61,8 @@ An apply must pass all of these independent checks:
 - one-time request execution enforced by a serialized, verified audit transaction;
 - fixed execution adapters without arbitrary shell input;
 - post-action verification and a synced, hash-chained audit record whose command
-  output is credential-redacted and size-bounded before persistence.
+  output and verification evidence are credential-redacted and size-bounded
+  before persistence.
 
 Review a proposal without changing anything:
 

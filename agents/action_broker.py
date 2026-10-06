@@ -53,6 +53,11 @@ def sanitize_audit_output(value: str) -> str:
     return sanitized
 
 
+def sanitize_audit_verification(values: list[str]) -> list[str]:
+    """Apply the audit text boundary to every verification evidence item."""
+    return [sanitize_audit_output(value) for value in values]
+
+
 def load_request(path: Path) -> ActionRequest:
     return ActionRequest.from_dict(json.loads(path.read_text()))
 
@@ -187,7 +192,7 @@ def execute(args: argparse.Namespace) -> int:
             "completed_at": utc_now().isoformat().replace("+00:00", "Z"),
             "outcome": outcome,
             "output": sanitize_audit_output(output),
-            "verification": verification,
+            "verification": sanitize_audit_verification(verification),
         })
     print(json.dumps(record, indent=2, sort_keys=True))
     return 0 if outcome == "succeeded" else 1
