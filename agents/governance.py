@@ -33,6 +33,16 @@ def utc_now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
 
 
+def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Build a JSON object while rejecting ambiguous duplicate field names."""
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON field '{key}'")
+        value[key] = item
+    return value
+
+
 def parse_time(value: str) -> dt.datetime:
     parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
     if parsed.tzinfo is None:
@@ -335,7 +345,18 @@ class AuditLog:
     def records(self) -> list[dict[str, Any]]:
         if not self.path.exists():
             return []
-        return [json.loads(line) for line in self.path.read_text().splitlines() if line.strip()]
+        records: list[dict[str, Any]] = []
+        for index, line in enumerate(self.path.read_text().splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line, object_pairs_hook=unique_object)
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise ValueError(f"audit record {index} is invalid: {exc}") from exc
+            if not isinstance(record, dict):
+                raise ValueError(f"audit record {index} must be a JSON object")
+            records.append(record)
+        return records
 
     def verify(self) -> None:
         previous = "GENESIS"

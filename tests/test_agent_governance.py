@@ -313,6 +313,27 @@ class AuditTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "invalid"):
                 audit.verify()
 
+    def test_non_object_audit_record_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "audit.jsonl"
+            path.write_text('["not", "an", "event"]\n')
+            with self.assertRaisesRegex(ValueError, "must be a JSON object"):
+                AuditLog(path).verify()
+
+    def test_duplicate_audit_fields_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "audit.jsonl"
+            path.write_text('{"outcome":"succeeded","outcome":"failed"}\n')
+            with self.assertRaisesRegex(ValueError, "duplicate JSON field 'outcome'"):
+                AuditLog(path).verify()
+
+    def test_malformed_audit_json_has_record_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "audit.jsonl"
+            path.write_text('{"outcome":\n')
+            with self.assertRaisesRegex(ValueError, "audit record 1 is invalid"):
+                AuditLog(path).verify()
+
     def test_executed_request_digest_cannot_be_replayed(self):
         with tempfile.TemporaryDirectory() as directory:
             audit = AuditLog(Path(directory) / "audit.jsonl")
